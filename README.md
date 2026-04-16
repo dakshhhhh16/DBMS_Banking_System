@@ -10,7 +10,7 @@ A small banking database I built for my DBMS course. It models the everyday stuf
 ## Run it
 
 ```bash
-mysql -u root -p < banking_system.sql
+mysql -u root banking_db < banking_system.sql
 ```
 
 Works on MySQL / MariaDB out of the box.
