@@ -1,4 +1,4 @@
-# Banking Management System — DBMS Project
+# Banking Management System - DBMS Project
 
 A small banking database I built for my DBMS course. It models the everyday stuff a bank deals with — branches, customers, accounts, employees, loans, transactions, and loan payments — and ties it all together with proper keys, constraints and a handful of useful queries.
 
@@ -20,4 +20,5 @@ Works on MySQL / MariaDB out of the box.
 Banks were the first thing that came to mind where data integrity actually *matters* — you can't have a withdrawal without an account, or a loan without a customer. It made the foreign keys and constraints feel like they were doing real work, not just being added because the rubric said so.
 
 ---
-*Daksh Pathak · April 2025*
+Authors:
+*Daksh Pathak · Naman Jain · Anvay April 2025*
