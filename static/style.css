@@ -1,0 +1,18 @@
+:root {
+  --app-bg-top: #e9f0ff;
+  --app-bg-bottom: #f7f9fc;
+  --card-accent: #0d6efd;
+}
+
+.app-body {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--app-bg-top), var(--app-bg-bottom));
+}
+
+.stat-card {
+  border-left: 4px solid var(--card-accent);
+}
+
+.table > :not(caption) > * > * {
+  white-space: nowrap;
+}
