@@ -21,31 +21,33 @@
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label" for="name">Full name</label>
-          <input class="form-control" id="name" name="name" autocomplete="name" required>
+          <input class="form-control" id="name" name="name" value="{{ request.form.get('name', '') }}" autocomplete="name" required>
         </div>
         <div class="col-md-6">
           <label class="form-label" for="dob">Date of birth</label>
-          <input class="form-control" id="dob" name="dob" type="date">
+          <input class="form-control" id="dob" name="dob" type="date" value="{{ request.form.get('dob', '') }}">
         </div>
         <div class="col-md-6">
           <label class="form-label" for="email">Email</label>
-          <input class="form-control" id="email" name="email" type="email" autocomplete="email" required>
+          <input class="form-control" id="email" name="email" type="email" value="{{ request.form.get('email', '') }}" autocomplete="email" required>
         </div>
         <div class="col-md-6">
           <label class="form-label" for="phone">Phone</label>
-          <input class="form-control" id="phone" name="phone" autocomplete="tel" required>
+          <input class="form-control" id="phone" name="phone" value="{{ request.form.get('phone', '') }}" autocomplete="tel" required>
+          <div class="form-hint">Use 10 to 15 digits only.</div>
         </div>
         <div class="col-12">
           <label class="form-label" for="address">Address</label>
-          <input class="form-control" id="address" name="address" autocomplete="street-address" required>
+          <input class="form-control" id="address" name="address" value="{{ request.form.get('address', '') }}" autocomplete="street-address" required>
         </div>
         <div class="col-md-6">
           <label class="form-label" for="username">Username</label>
-          <input class="form-control" id="username" name="username" autocomplete="username" required>
+          <input class="form-control" id="username" name="username" value="{{ request.form.get('username', '') }}" autocomplete="username" required>
         </div>
         <div class="col-md-6">
           <label class="form-label" for="password">Password</label>
           <input class="form-control" id="password" name="password" type="password" minlength="8" autocomplete="new-password" required>
+          <div class="form-hint">Use at least 8 characters.</div>
         </div>
       </div>
 

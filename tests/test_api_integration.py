@@ -2,6 +2,8 @@ import sqlite3
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from banking_app import create_app
 
 
@@ -43,6 +45,70 @@ def login_as_priya(client):
     )
     assert response.status_code == 302
     assert response.location == "/"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"name": "A"}, b"Name must be at least 2 characters."),
+        ({"address": "Home"}, b"Address must be at least 5 characters."),
+        ({"phone": "12345"}, b"Phone must contain 10 to 15 digits."),
+        ({"email": "bad-email"}, b"Email format is invalid."),
+        ({"dob": "01-01-2000"}, b"Date of birth must be YYYY-MM-DD."),
+        ({"username": "abc"}, b"Username must be at least 4 characters."),
+        ({"password": "short"}, b"Password must be at least 8 characters."),
+        ({"username": "priya"}, b"Username already exists."),
+        ({"email": "priya@yahoo.com"}, b"Email already exists."),
+        ({"phone": "9123456780"}, b"Phone already exists."),
+    ],
+)
+def test_registration_shows_specific_validation_errors(tmp_path, overrides, message):
+    app = build_sqlite_app(tmp_path)
+    client = app.test_client()
+    payload = {
+        "csrf_token": csrf_token(client, "/auth/register"),
+        "name": "Demo User",
+        "address": "100 Demo Street",
+        "phone": "9667788990",
+        "email": "demo.user@example.com",
+        "dob": "2000-01-01",
+        "username": "demouser",
+        "password": "Password123",
+    }
+    payload.update(overrides)
+
+    response = client.post("/auth/register", data=payload, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert message in response.data
+
+
+def test_registration_keeps_entered_values_after_validation_error(tmp_path):
+    app = build_sqlite_app(tmp_path)
+    client = app.test_client()
+
+    response = client.post(
+        "/auth/register",
+        data={
+            "csrf_token": csrf_token(client, "/auth/register"),
+            "name": "Demo User",
+            "address": "100 Demo Street",
+            "phone": "12345",
+            "email": "demo.user@example.com",
+            "dob": "2000-01-01",
+            "username": "demouser",
+            "password": "Password123",
+        },
+        follow_redirects=True,
+    )
+
+    html = response.get_data(as_text=True)
+    assert "Phone must contain 10 to 15 digits." in html
+    assert 'value="Demo User"' in html
+    assert 'value="100 Demo Street"' in html
+    assert 'value="demo.user@example.com"' in html
+    assert 'value="demouser"' in html
+    assert 'value="Password123"' not in html
 
 
 def test_api_requires_authentication_with_json_response(tmp_path):

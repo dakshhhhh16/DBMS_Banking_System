@@ -426,6 +426,12 @@ body {
   box-shadow: 0 0 0 0.22rem rgba(0, 140, 137, 0.14);
 }
 
+.form-hint {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .app-table {
   --bs-table-bg: transparent;
   --bs-table-hover-bg: rgba(0, 140, 137, 0.06);

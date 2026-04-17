@@ -13,22 +13,24 @@ PHONE_RE = re.compile(r"^[0-9]{10,15}$")
 
 def require_text(value, field_name, min_len=1, max_len=120):
     text = (value or "").strip()
-    if len(text) < min_len:
+    if not text:
         raise ValidationError(f"{field_name} is required.")
+    if len(text) < min_len:
+        raise ValidationError(f"{field_name} must be at least {min_len} characters.")
     if len(text) > max_len:
         raise ValidationError(f"{field_name} must be <= {max_len} characters.")
     return text
 
 
 def require_email(value):
-    email = require_text(value, "Email", min_len=5, max_len=120).lower()
+    email = require_text(value, "Email", min_len=1, max_len=120).lower()
     if not EMAIL_RE.match(email):
         raise ValidationError("Email format is invalid.")
     return email
 
 
 def require_phone(value):
-    phone = require_text(value, "Phone", min_len=10, max_len=15)
+    phone = require_text(value, "Phone", min_len=1, max_len=15)
     if not PHONE_RE.match(phone):
         raise ValidationError("Phone must contain 10 to 15 digits.")
     return phone
