@@ -84,10 +84,10 @@ def test_seeded_demo_user_can_read_all_api_endpoints(tmp_path):
     transactions = client.get("/api/transactions")
 
     assert summary.status_code == 200
-    assert summary.json["branches"] == 4
-    assert summary.json["customers"] == 5
-    assert summary.json["accounts"] == 6
-    assert summary.json["loans"] == 4
+    assert summary.json["branches"] == 8
+    assert summary.json["customers"] == 10
+    assert summary.json["accounts"] == 16
+    assert summary.json["loans"] == 10
 
     assert accounts.status_code == 200
     assert {row["account_no"] for row in accounts.json} == {1, 6}

@@ -133,18 +133,33 @@ INSERT INTO branch (branch_name, city, assets) VALUES
  ('MG Road', 'Bengaluru', 50000000),
  ('Connaught Place', 'Delhi', 75000000),
  ('Marine Drive', 'Mumbai', 90000000),
- ('Park Street', 'Kolkata', 30000000);
+ ('Park Street', 'Kolkata', 30000000),
+ ('Banjara Hills', 'Hyderabad', 42000000),
+ ('Anna Salai', 'Chennai', 56000000),
+ ('FC Road', 'Pune', 38000000),
+ ('Sector 17', 'Chandigarh', 27000000);
 
 INSERT INTO customer (name, address, phone, email, dob) VALUES
  ('Aarav Sharma', '22 Park Street, Delhi', '9876543210', 'aarav@gmail.com', '1995-04-12'),
  ('Priya Verma', '15 MG Road, Bengaluru', '9123456780', 'priya@yahoo.com', '1990-07-23'),
  ('Rohan Mehta', '9 Marine Drive, Mumbai', '9988776655', 'rohan@outlook.com', '1988-01-15'),
  ('Sneha Iyer', '5 Anna Salai, Chennai', '9001122334', 'sneha@gmail.com', '1992-11-30'),
- ('Karan Patel', '77 Ring Road, Ahmedabad', '9445566778', 'karan@gmail.com', '1985-06-18');
+ ('Karan Patel', '77 Ring Road, Ahmedabad', '9445566778', 'karan@gmail.com', '1985-06-18'),
+ ('Ananya Rao', '42 Jubilee Hills, Hyderabad', '9112233445', 'ananya@example.com', '1997-09-09'),
+ ('Vivek Nair', '18 Brigade Road, Bengaluru', '9223344556', 'vivek@example.com', '1991-12-05'),
+ ('Meera Kapoor', '31 FC Road, Pune', '9334455667', 'meera@example.com', '1994-02-27'),
+ ('Aditya Sen', '88 Salt Lake, Kolkata', '9445566889', 'aditya@example.com', '1989-10-14'),
+ ('Nisha Gupta', '11 Sector 17, Chandigarh', '9556677889', 'nisha@example.com', '1996-05-20');
 
 INSERT INTO app_user (username, password_hash, customer_id) VALUES
  ('aarav', 'pbkdf2:sha256:600000$XBy1Qnp4ubTXyg1J$1c5aaefa93172d68ab9273436c95cea33ef89bab1990133ca8f2d22e63d5856b', 1),
- ('priya', 'pbkdf2:sha256:600000$srHAKjNozghCwFXZ$8eb079c818fa7b8e3dd61502b8729d3883324c4b7493e7bfe39eedff717871c1', 2);
+ ('priya', 'pbkdf2:sha256:600000$srHAKjNozghCwFXZ$8eb079c818fa7b8e3dd61502b8729d3883324c4b7493e7bfe39eedff717871c1', 2),
+ ('rohan', 'pbkdf2:sha256:600000$0szD8yTQV8ajBF0K$b8f61d22bf20f276e2eef6b4dd01f18841ac10a7b86f99d46d618961c0fff44c', 3),
+ ('sneha', 'pbkdf2:sha256:600000$wg6eBLoNEaK7Brhs$720f393ff1933ee02b67c4620e4f3c9c3fc74f6f87acb0a0a2925546f0d69533', 4),
+ ('karan', 'pbkdf2:sha256:600000$4b58ZSgbmCtdPbA1$6643a092da13faa99797caf8358aa1addb505ee1da19661112af98fda6729ace', 5),
+ ('ananya', 'pbkdf2:sha256:600000$OnLsYcjrIm41VAJT$c224fec6559652ab91cc905d5f2ba6585d889156e331ec4be54c5c0252e165e3', 6),
+ ('vivek', 'pbkdf2:sha256:600000$d7pIYn5qsPC1gZvI$3fd7094cf968431c057c574166a7ebc0abe6d7069913bd2f95fc5b792338aa42', 7),
+ ('meera', 'pbkdf2:sha256:600000$9keF09mylus9cUGJ$03554668bc87749bc5882c6405e227b73c336bad15c85eeb917dc0634d54a7fc', 8);
 
 INSERT INTO account (acc_type, balance, open_date, branch_id, customer_id) VALUES
  ('Savings', 45000.00, '2022-03-15', 1, 2),
@@ -152,20 +167,43 @@ INSERT INTO account (acc_type, balance, open_date, branch_id, customer_id) VALUE
  ('Savings', 8500.00, '2023-01-20', 3, 3),
  ('FD', 200000.00, '2020-09-05', 1, 4),
  ('Savings', 15000.00, '2024-03-11', 4, 5),
- ('Current', 60000.00, '2023-07-19', 2, 2);
+ ('Current', 60000.00, '2023-07-19', 2, 2),
+ ('Savings', 32000.00, '2024-01-08', 5, 6),
+ ('Current', 88000.00, '2022-11-02', 6, 7),
+ ('Savings', 22500.00, '2024-08-16', 7, 8),
+ ('FD', 300000.00, '2021-04-30', 8, 9),
+ ('Savings', 17500.00, '2025-02-14', 5, 10),
+ ('Savings', 5000.00, '2025-05-10', 2, 1),
+ ('Current', 71000.00, '2023-10-24', 3, 4),
+ ('Savings', 9800.00, '2024-06-03', 4, 6),
+ ('FD', 125000.00, '2022-12-12', 1, 7),
+ ('Current', 41000.00, '2025-01-07', 6, 8);
 
 INSERT INTO employee (name, designation, salary, branch_id) VALUES
  ('Manish Kumar', 'Manager', 85000, 1),
  ('Anita Rao', 'Cashier', 40000, 2),
  ('Vikas Singh', 'Clerk', 32000, 3),
  ('Riya Das', 'Manager', 82000, 4),
- ('Suresh Nair', 'Cashier', 38000, 1);
+ ('Suresh Nair', 'Cashier', 38000, 1),
+ ('Farah Khan', 'Loan Officer', 54000, 5),
+ ('Deepak Menon', 'Relationship Manager', 62000, 6),
+ ('Isha Malhotra', 'Operations Lead', 70000, 7),
+ ('Arjun Bose', 'Assistant Manager', 58000, 8),
+ ('Neel Shah', 'Cashier', 41000, 5),
+ ('Pooja Reddy', 'Clerk', 35000, 6),
+ ('Kabir Sethi', 'Manager', 87000, 7);
 
 INSERT INTO loan (loan_type, amount, interest_rate, issue_date, branch_id, customer_id) VALUES
  ('Home', 2500000, 8.50, '2023-02-10', 1, 2),
  ('Car', 600000, 9.25, '2024-05-21', 2, 1),
  ('Education', 400000, 7.00, '2022-08-15', 3, 3),
- ('Personal', 150000, 11.50, '2024-12-01', 4, 5);
+ ('Personal', 150000, 11.50, '2024-12-01', 4, 5),
+ ('Home', 3200000, 8.10, '2023-09-18', 5, 6),
+ ('Car', 850000, 9.75, '2025-01-11', 6, 7),
+ ('Personal', 250000, 12.25, '2025-03-03', 7, 8),
+ ('Education', 550000, 7.50, '2024-07-22', 8, 9),
+ ('Home', 1800000, 8.90, '2022-12-09', 1, 10),
+ ('Personal', 95000, 10.90, '2025-04-15', 3, 4);
 
 INSERT INTO bank_transaction (txn_type, amount, txn_datetime, source_account_no, target_account_no, description) VALUES
  ('Deposit', 10000, '2025-01-05 09:15:00', 1, NULL, 'Cash deposit'),
@@ -173,11 +211,34 @@ INSERT INTO bank_transaction (txn_type, amount, txn_datetime, source_account_no,
  ('Deposit', 50000, '2025-02-01 14:20:00', 2, NULL, 'Cheque deposit'),
  ('Transfer', 5000, '2025-02-14 16:10:00', 3, 1, 'Fund transfer'),
  ('Deposit', 7500, '2025-03-09 10:35:00', 5, NULL, 'UPI deposit'),
- ('Withdraw', 12000, '2025-03-22 12:50:00', 6, NULL, 'Cash withdrawal');
+ ('Withdraw', 12000, '2025-03-22 12:50:00', 6, NULL, 'Cash withdrawal'),
+ ('Deposit', 18000, '2025-04-02 09:40:00', 7, NULL, 'Salary credit'),
+ ('Withdraw', 4500, '2025-04-05 18:05:00', 8, NULL, 'Card payment'),
+ ('Transfer', 12500, '2025-04-11 13:30:00', 9, 2, 'Rent transfer'),
+ ('Deposit', 40000, '2025-04-15 10:10:00', 10, NULL, 'FD renewal'),
+ ('Deposit', 9000, '2025-05-01 08:25:00', 11, NULL, 'Wallet top up'),
+ ('Withdraw', 1500, '2025-05-03 20:45:00', 12, NULL, 'ATM cash'),
+ ('Deposit', 22000, '2025-05-09 11:15:00', 13, NULL, 'Client payment'),
+ ('Transfer', 3000, '2025-05-12 15:50:00', 14, 7, 'Family transfer'),
+ ('Deposit', 125000, '2025-05-20 09:00:00', 15, NULL, 'FD booking'),
+ ('Withdraw', 6000, '2025-06-01 17:35:00', 16, NULL, 'Vendor payment'),
+ ('Transfer', 8000, '2025-06-05 12:10:00', 6, 1, 'Savings transfer'),
+ ('Deposit', 15000, '2025-06-08 10:05:00', 1, NULL, 'Bonus credit'),
+ ('Transfer', 7000, '2025-06-10 16:20:00', 2, 12, 'Expense allocation'),
+ ('Withdraw', 3500, '2025-06-15 19:25:00', 8, NULL, 'Fuel payment');
 
 INSERT INTO loan_payment (loan_id, pay_date, amount_paid) VALUES
  (1, '2025-01-15', 25000),
  (2, '2025-02-15', 12000),
  (1, '2025-02-15', 25000),
  (3, '2025-03-15', 8000),
- (4, '2025-03-30', 6000);
+ (4, '2025-03-30', 6000),
+ (5, '2025-04-15', 32000),
+ (6, '2025-04-25', 15000),
+ (7, '2025-05-05', 9000),
+ (8, '2025-05-15', 11000),
+ (9, '2025-05-20', 18000),
+ (10, '2025-06-01', 4000),
+ (5, '2025-06-15', 32000),
+ (6, '2025-06-25', 15000),
+ (8, '2025-07-15', 11000);
