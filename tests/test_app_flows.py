@@ -35,7 +35,7 @@ class FakeAuthService:
 
 class FakeBankingRepository:
     def get_customer_accounts(self, customer_id):
-        return [{"account_no": 11, "acc_type": "Savings", "balance": 1500.0, "open_date": "2026-01-01", "branch_name": "MG Road", "city": "Bengaluru"}]
+        return [{"account_no": 11, "acc_type": "Savings", "balance": 1500.0, "open_date": "2026-01-01", "branch_id": 1, "branch_name": "MG Road", "city": "Bengaluru"}]
 
     def get_recent_transactions_for_customer(self, customer_id):
         return [{"txn_id": 1, "txn_type": "Deposit", "amount": 200, "txn_datetime": "2026-01-01 10:00:00", "source_account_no": 11, "target_account_no": None, "description": "seed"}]
@@ -46,6 +46,8 @@ class FakeBankingService:
         self.repository = FakeBankingRepository()
         self.account_calls = 0
         self.txn_calls = 0
+        self.update_calls = 0
+        self.close_calls = 0
 
     def get_dashboard_payload(self, customer_id):
         return {
@@ -58,9 +60,9 @@ class FakeBankingService:
                 "total_loan": 5678.0,
             },
             "reference": {
-                "branches": [{"branch_id": 1, "branch_name": "MG Road"}],
-                "loans": [],
-                "employees": [],
+                "branches": [{"branch_id": 1, "branch_name": "MG Road", "city": "Bengaluru", "assets": 50000000}],
+                "loans": [{"loan_id": 1, "loan_type": "Home", "amount": 2500000, "interest_rate": 8.5}],
+                "employees": [{"emp_id": 1, "name": "Manish Kumar", "designation": "Manager", "salary": 85000, "branch_id": 1}],
             },
             "accounts": self.repository.get_customer_accounts(customer_id),
             "transactions": self.repository.get_recent_transactions_for_customer(customer_id),
@@ -75,6 +77,21 @@ class FakeBankingService:
             raise ValidationError("Target account is required for transfer.")
         self.txn_calls += 1
         return 1
+
+    def update_account(self, customer_id, account_no, payload):
+        self.update_calls += 1
+        return {
+            "account_no": account_no,
+            "acc_type": payload.get("acc_type", "Savings"),
+            "branch_id": int(payload.get("branch_id", 1)),
+            "branch_name": "MG Road",
+            "city": "Bengaluru",
+            "balance": 1500.0,
+        }
+
+    def close_account(self, customer_id, account_no):
+        self.close_calls += 1
+        return account_no
 
 
 def build_test_app():
@@ -135,6 +152,21 @@ def test_login_flow_success():
     assert b"Welcome back" in response.data
 
 
+def test_bank_details_page_success_for_authenticated_user():
+    app = build_test_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+
+    response = client.get("/bank-details")
+
+    assert response.status_code == 200
+    assert b"Bank Details" in response.data
+    assert b"Branch Directory" in response.data
+    assert b"Employees" in response.data
+
+
 def test_account_creation_requires_login():
     app = build_test_app()
     client = app.test_client()
@@ -189,3 +221,52 @@ def test_transfer_edge_case_target_missing():
 
     assert response.status_code == 200
     assert b"Target account is required for transfer" in response.data
+
+
+def test_api_account_update_requires_login():
+    app = build_test_app()
+    client = app.test_client()
+
+    response = client.patch(
+        "/api/accounts/11",
+        json={"acc_type": "Current"},
+    )
+
+    assert response.status_code == 401
+    assert response.json == {"error": "Authentication required."}
+
+
+def test_api_account_update_success_for_authenticated_user():
+    app = build_test_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+        sess["csrf_token"] = "known-token"
+
+    response = client.patch(
+        "/api/accounts/11",
+        json={"acc_type": "Current", "branch_id": 1},
+        headers={"X-CSRF-Token": "known-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["account_no"] == 11
+    assert response.json["acc_type"] == "Current"
+
+
+def test_api_account_close_success_for_authenticated_user():
+    app = build_test_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+        sess["csrf_token"] = "known-token"
+
+    response = client.delete(
+        "/api/accounts/11",
+        headers={"X-CSRF-Token": "known-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["account_no"] == 11

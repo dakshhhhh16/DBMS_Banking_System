@@ -21,6 +21,8 @@
         </a>
         <div class="ms-auto d-flex align-items-center gap-2 nav-actions">
           {% if current_user %}
+            <a class="btn btn-sm btn-nav {% if request.endpoint == 'dashboard.home' %}active{% endif %}" href="{{ url_for('dashboard.home') }}">Personal Details</a>
+            <a class="btn btn-sm btn-nav {% if request.endpoint == 'dashboard.bank_details' %}active{% endif %}" href="{{ url_for('dashboard.bank_details') }}">Bank Details</a>
             <span class="current-user">{{ current_user.name }}</span>
             <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

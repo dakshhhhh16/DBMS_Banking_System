@@ -164,6 +164,23 @@ def test_seeded_demo_user_can_read_all_api_endpoints(tmp_path):
     assert {row["source_account_no"] for row in transactions.json} == {1, 6}
 
 
+def test_bank_details_page_uses_separate_bank_view(tmp_path):
+    app = build_sqlite_app(tmp_path)
+    client = app.test_client()
+    login_as_priya(client)
+
+    response = client.get("/bank-details")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Bank Details" in html
+    assert "Branch Directory" in html
+    assert "Recent Loans" in html
+    assert "Employees" in html
+    assert "Create Account" not in html
+    assert "Create Transaction" not in html
+
+
 def test_create_account_and_deposit_flow_updates_api_data(tmp_path):
     app = build_sqlite_app(tmp_path)
     client = app.test_client()
@@ -231,3 +248,60 @@ def test_invalid_transfer_does_not_create_transaction(tmp_path):
 
     assert response.status_code == 302
     assert len(after) == len(before)
+
+
+def test_api_update_and_close_account_flow(tmp_path):
+    app = build_sqlite_app(tmp_path)
+    client = app.test_client()
+    login_as_priya(client)
+
+    create_account_response = client.post(
+        "/accounts/create",
+        data={
+            "csrf_token": csrf_token(client, "/"),
+            "acc_type": "Savings",
+            "branch_id": "1",
+            "opening_balance": "0",
+        },
+    )
+    assert create_account_response.status_code == 302
+
+    accounts = client.get("/api/accounts").json
+    new_account = max(accounts, key=lambda row: row["account_no"])
+
+    update_response = client.patch(
+        f"/api/accounts/{new_account['account_no']}",
+        json={"acc_type": "Current", "branch_id": 2},
+        headers={"X-CSRF-Token": csrf_token(client, "/")},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json["acc_type"] == "Current"
+    assert update_response.json["branch_id"] == 2
+
+    updated_accounts = client.get("/api/accounts").json
+    updated_account = next(row for row in updated_accounts if row["account_no"] == new_account["account_no"])
+    assert updated_account["acc_type"] == "Current"
+    assert updated_account["branch_id"] == 2
+
+    close_response = client.delete(
+        f"/api/accounts/{new_account['account_no']}",
+        headers={"X-CSRF-Token": csrf_token(client, "/")},
+    )
+    assert close_response.status_code == 200
+
+    final_accounts = client.get("/api/accounts").json
+    assert all(row["account_no"] != new_account["account_no"] for row in final_accounts)
+
+
+def test_api_close_account_rejects_non_zero_balance(tmp_path):
+    app = build_sqlite_app(tmp_path)
+    client = app.test_client()
+    login_as_priya(client)
+
+    response = client.delete(
+        "/api/accounts/1",
+        headers={"X-CSRF-Token": csrf_token(client, "/")},
+    )
+
+    assert response.status_code == 400
+    assert "balance must be zero" in response.json["error"].lower()

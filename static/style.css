@@ -109,6 +109,12 @@ body {
   border-color: rgba(0, 140, 137, 0.42);
 }
 
+.btn-nav.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: var(--charcoal);
+}
+
 .btn-nav-primary,
 .btn-action {
   color: #ffffff;
@@ -150,6 +156,12 @@ body {
   inset: auto 0 0;
   height: 8px;
   background: linear-gradient(90deg, var(--teal), var(--gold), var(--coral), var(--mint));
+}
+
+.bank-hero {
+  background:
+    linear-gradient(90deg, rgba(19, 24, 23, 0.9), rgba(19, 24, 23, 0.4)),
+    url("https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=1800&q=80") center / cover;
 }
 
 .dashboard-hero-grid {
@@ -368,6 +380,51 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.personal-data-grid {
+  grid-template-columns: 1fr;
+}
+
+.personal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.personal-summary-grid .metric-tile {
+  grid-column: span 1;
+}
+
+.personal-summary-grid .wide-metric {
+  grid-column: span 2;
+}
+
+.profile-lines {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.profile-lines span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.72rem 0.85rem;
+  color: var(--muted);
+  background: rgba(245, 248, 247, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.profile-lines b {
+  color: var(--ink);
+}
+
+.wide-panel {
+  grid-column: 1 / -1;
+}
+
 .action-panel,
 .data-panel,
 .auth-panel {
@@ -441,6 +498,35 @@ body {
   padding: 0.85rem 0.8rem;
   border-bottom-color: rgba(220, 231, 228, 0.92);
   white-space: nowrap;
+}
+
+.app-table th.actions-col {
+  min-width: 290px;
+}
+
+.app-table td.account-actions-cell {
+  min-width: 290px;
+  white-space: normal;
+}
+
+.account-update-form {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.9fr) minmax(132px, 1.2fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.account-update-form .form-select {
+  min-height: 40px;
+}
+
+.account-update-form .btn {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.account-close-form .btn {
+  min-width: 164px;
 }
 
 .app-table thead th {
@@ -608,6 +694,15 @@ body {
   .wide-metric {
     grid-column: span 6;
   }
+
+  .personal-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .personal-summary-grid .metric-tile,
+  .personal-summary-grid .wide-metric {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 991.98px) {
@@ -628,6 +723,20 @@ body {
 
   .auth-visual {
     min-height: 360px;
+  }
+
+  .account-update-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-update-form .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .app-table th.actions-col,
+  .app-table td.account-actions-cell {
+    min-width: 250px;
   }
 }
 
@@ -660,6 +769,15 @@ body {
     grid-column: span 6;
   }
 
+  .personal-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-summary-grid .metric-tile,
+  .personal-summary-grid .wide-metric {
+    grid-column: 1 / -1;
+  }
+
   .auth-shell {
     width: min(100% - 1rem, 1180px);
   }
@@ -669,6 +787,10 @@ body {
   .action-panel,
   .data-panel {
     padding: 1rem;
+  }
+
+  .account-close-form .btn {
+    width: 100%;
   }
 }
 

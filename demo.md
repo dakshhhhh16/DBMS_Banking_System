@@ -108,7 +108,8 @@ The demo is not an empty app. It starts with realistic dummy banking data, inclu
 | `GET` | `/auth/register` | Page | Registration form |
 | `POST` | `/auth/register` | Form action | Create new customer and user |
 | `POST` | `/auth/logout` | Form action | Logout button |
-| `GET` | `/` | Page | Dashboard |
+| `GET` | `/` | Page | Personal details, account actions, accounts, transactions |
+| `GET` | `/bank-details` | Page | Bank summary, branches, loans, employees |
 | `POST` | `/accounts/create` | Form action | Create a new account |
 | `POST` | `/transactions/create` | Form action | Deposit, withdraw, transfer |
 | `GET` | `/api/summary` | API | Summary JSON |
@@ -178,7 +179,7 @@ Say this:
 Passwords are not stored directly. The seeded users have Werkzeug password hashes in SQLite.
 ```
 
-### Step 3: Show Dashboard Page
+### Step 3: Show Personal Details Page
 
 Route:
 
@@ -188,26 +189,37 @@ GET /
 
 Show these areas:
 
-1. Top banking command center hero.
-2. Signed-in user card.
-3. Primary balance snapshot.
-4. Summary metric tiles.
-5. Create Account form.
-6. Create Transaction form.
-7. My Accounts table.
-8. Recent Transactions table.
-9. Branch Directory table.
-10. Recent Loans table.
+1. Navbar with Personal Details and Bank Details links.
+2. Personal banking workspace hero.
+3. Signed-in user card.
+4. Username, email, and customer id.
+5. Primary balance snapshot.
+6. Create Account form.
+7. Create Transaction form.
+8. My Accounts table.
+9. Recent Transactions table.
 
 Say this:
 
 ```text
-The dashboard combines bank-wide summary data with customer-specific account and transaction data.
+The personal page is only for the logged-in customer. Bank-wide data has been moved to a separate Bank Details page.
 ```
 
-### Step 4: Explain Dashboard Summary
+### Step 4: Show Bank Details Page
 
-Point to the metric tiles:
+Click `Bank Details` in the navbar, or open:
+
+```text
+http://127.0.0.1:5050/bank-details
+```
+
+Route:
+
+```text
+GET /bank-details
+```
+
+Show these areas:
 
 - Branches
 - Customers
@@ -215,6 +227,9 @@ Point to the metric tiles:
 - Loans
 - Deposits
 - Loans issued
+- Branch Directory
+- Recent Loans
+- Employees
 
 Where the data comes from:
 
@@ -225,7 +240,7 @@ BankingRepository.get_summary()
 Say this:
 
 ```text
-These numbers are calculated using SQL aggregate queries against the SQLite database.
+This page is the institution view. It shows bank-wide totals and reference records without mixing in personal account actions.
 ```
 
 ### Step 5: Show My Accounts
@@ -580,7 +595,8 @@ Use this as a quick checklist during the demo:
 | --- | --- | --- |
 | Login | `/auth/login` | Log in as `priya` |
 | Register | `/auth/register` | Create a new demo user |
-| Dashboard | `/` | Show metrics, account form, transaction form, tables |
+| Personal Details | `/` | Show profile, account form, transaction form, accounts, transactions |
+| Bank Details | `/bank-details` | Show summary metrics, branch directory, loans, employees |
 | API Summary | `/api/summary` | Show JSON summary |
 | API Accounts | `/api/accounts` | Show customer accounts JSON |
 | API Transactions | `/api/transactions` | Show transactions JSON |

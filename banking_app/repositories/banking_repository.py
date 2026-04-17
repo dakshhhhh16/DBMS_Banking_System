@@ -38,7 +38,7 @@ class BankingRepository:
         payload = {}
         with get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT branch_id, branch_name FROM branch ORDER BY branch_name")
+            cur.execute("SELECT branch_id, branch_name, city, assets FROM branch ORDER BY branch_name")
             payload["branches"] = _rows_to_dicts(cur.fetchall())
 
             cur.execute("""
@@ -61,7 +61,7 @@ class BankingRepository:
 
     def get_customer_accounts(self, customer_id):
         sql = """
-            SELECT a.account_no, a.acc_type, a.balance, a.open_date,
+            SELECT a.account_no, a.acc_type, a.balance, a.open_date, a.branch_id,
                    b.branch_name, b.city
             FROM account a
             JOIN branch b ON b.branch_id = a.branch_id
@@ -195,6 +195,101 @@ class BankingRepository:
                 )
                 conn.commit()
                 return cur.lastrowid
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cur.close()
+
+    def update_account(self, *, customer_id, account_no, acc_type=None, branch_id=None):
+        with get_connection() as conn:
+            cur = conn.cursor()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+
+                cur.execute(
+                    "SELECT account_no, customer_id FROM account WHERE account_no = ?",
+                    (account_no,),
+                )
+                account = cur.fetchone()
+                if account is None:
+                    raise NotFoundError("Account not found.")
+                if account["customer_id"] != customer_id:
+                    raise AuthorizationError("You can only update your own accounts.")
+
+                if branch_id is not None:
+                    cur.execute("SELECT branch_id FROM branch WHERE branch_id = ?", (branch_id,))
+                    if cur.fetchone() is None:
+                        raise NotFoundError("Selected branch was not found.")
+
+                updates = []
+                values = []
+
+                if acc_type is not None:
+                    updates.append("acc_type = ?")
+                    values.append(acc_type)
+
+                if branch_id is not None:
+                    updates.append("branch_id = ?")
+                    values.append(branch_id)
+
+                values.append(account_no)
+                cur.execute(f"UPDATE account SET {', '.join(updates)} WHERE account_no = ?", tuple(values))
+
+                cur.execute(
+                    """
+                    SELECT a.account_no, a.acc_type, a.balance, a.open_date, a.branch_id,
+                           b.branch_name, b.city
+                    FROM account a
+                    JOIN branch b ON b.branch_id = a.branch_id
+                    WHERE a.account_no = ?
+                    """,
+                    (account_no,),
+                )
+                updated = cur.fetchone()
+
+                conn.commit()
+                return _row_to_dict(updated)
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cur.close()
+
+    def close_account(self, *, customer_id, account_no):
+        with get_connection() as conn:
+            cur = conn.cursor()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+
+                cur.execute(
+                    "SELECT account_no, customer_id, balance FROM account WHERE account_no = ?",
+                    (account_no,),
+                )
+                account = cur.fetchone()
+                if account is None:
+                    raise NotFoundError("Account not found.")
+                if account["customer_id"] != customer_id:
+                    raise AuthorizationError("You can only close your own accounts.")
+
+                if _to_decimal(account["balance"]) != Decimal("0"):
+                    raise ValidationError("Account balance must be zero before closing.")
+
+                cur.execute(
+                    """
+                    SELECT COUNT(*) AS txn_count
+                    FROM bank_transaction
+                    WHERE source_account_no = ? OR target_account_no = ?
+                    """,
+                    (account_no, account_no),
+                )
+                txn_count = cur.fetchone()["txn_count"]
+                if txn_count > 0:
+                    raise ValidationError("Account cannot be closed because transaction history exists.")
+
+                cur.execute("DELETE FROM account WHERE account_no = ?", (account_no,))
+                conn.commit()
+                return account_no
             except Exception:
                 conn.rollback()
                 raise

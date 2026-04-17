@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, flash, g, jsonify, redirect, render_template, request, url_for
 
 from banking_app.utils.decorators import login_required
-from banking_app.utils.exceptions import AppError
+from banking_app.utils.exceptions import AppError, ValidationError
 from banking_app.utils.validators import validate_csrf_from_request
 
 
@@ -17,6 +17,13 @@ def home():
 
     payload = current_app.extensions["banking_service"].get_dashboard_payload(g.user["customer_id"])
     return render_template("dashboard/home.html", payload=payload)
+
+
+@dashboard_bp.get("/bank-details")
+@login_required
+def bank_details():
+    payload = current_app.extensions["banking_service"].get_dashboard_payload(g.user["customer_id"])
+    return render_template("dashboard/bank_details.html", payload=payload)
 
 
 @dashboard_bp.post("/accounts/create")
@@ -41,6 +48,31 @@ def create_transaction():
     except AppError as err:
         flash(err.message, "danger")
     return redirect(url_for("dashboard.home"))
+
+
+@dashboard_bp.route("/api/accounts/<int:account_no>", methods=["PUT", "PATCH"])
+@login_required
+def api_update_account(account_no):
+    validate_csrf_from_request()
+
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        raise ValidationError("JSON object payload is required.")
+
+    updated_account = current_app.extensions["banking_service"].update_account(
+        g.user["customer_id"],
+        account_no,
+        payload,
+    )
+    return jsonify(updated_account)
+
+
+@dashboard_bp.delete("/api/accounts/<int:account_no>")
+@login_required
+def api_close_account(account_no):
+    validate_csrf_from_request()
+    current_app.extensions["banking_service"].close_account(g.user["customer_id"], account_no)
+    return jsonify({"message": "Account closed successfully.", "account_no": account_no})
 
 
 @dashboard_bp.get("/api/summary")

@@ -19,8 +19,11 @@ The project is ready for local demos. SQLite is used through Python's built-in `
 - Registration and login with hashed passwords.
 - Session-based authentication.
 - CSRF protection for form POST requests.
-- Dashboard with bank-wide summary metrics.
+- Personal dashboard for profile, accounts, transactions, and money movement.
+- Separate bank details page for branch, employee, loan, and bank-wide summary records.
 - Account creation for Savings, Current, and FD accounts.
+- Account updates (type and branch) for the logged-in user.
+- Account closing with safety checks (zero balance and no transaction history).
 - Deposit, withdraw, and transfer transactions.
 - SQLite foreign keys, checks, indexes, and seed data.
 - JSON API endpoints for summary, accounts, and transactions.
@@ -29,16 +32,16 @@ The project is ready for local demos. SQLite is used through Python's built-in `
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| Backend | Flask 3 |
-| Templates | Jinja |
-| Database | SQLite 3 |
-| DB driver | Python stdlib `sqlite3` |
-| Config | `python-dotenv` |
-| Password hashing | Werkzeug |
-| Tests | pytest |
-| Styling | Bootstrap 5 plus custom CSS |
+| Layer            | Technology                  |
+| ---------------- | --------------------------- |
+| Backend          | Flask 3                     |
+| Templates        | Jinja                       |
+| Database         | SQLite 3                    |
+| DB driver        | Python stdlib `sqlite3`     |
+| Config           | `python-dotenv`             |
+| Password hashing | Werkzeug                    |
+| Tests            | pytest                      |
+| Styling          | Bootstrap 5 plus custom CSS |
 
 ## Project Structure
 
@@ -160,12 +163,12 @@ DB_PATH=instance/banking.sqlite3
 SESSION_TTL_SECONDS=3600
 ```
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `SECRET_KEY` | Flask session signing key | `dev-only-change-me` in code |
-| `FLASK_ENV` | Controls secure cookie behavior | `development` |
-| `DB_PATH` | SQLite database file path | `instance/banking.sqlite3` |
-| `SESSION_TTL_SECONDS` | Session lifetime in seconds | `3600` |
+| Variable              | Purpose                         | Default                      |
+| --------------------- | ------------------------------- | ---------------------------- |
+| `SECRET_KEY`          | Flask session signing key       | `dev-only-change-me` in code |
+| `FLASK_ENV`           | Controls secure cookie behavior | `development`                |
+| `DB_PATH`             | SQLite database file path       | `instance/banking.sqlite3`   |
+| `SESSION_TTL_SECONDS` | Session lifetime in seconds     | `3600`                       |
 
 ## Demo Users
 
@@ -175,52 +178,55 @@ Every seeded demo user uses the same password:
 Password123
 ```
 
-| Username | Customer | Suggested demo use |
-| --- | --- | --- |
-| `priya` | Priya Verma | Best primary dashboard demo user |
-| `aarav` | Aarav Sharma | Transfer target and second login demo |
-| `rohan` | Rohan Mehta | Additional user data |
-| `sneha` | Sneha Iyer | Additional user data |
-| `karan` | Karan Patel | Additional user data |
-| `ananya` | Ananya Rao | Additional user data |
-| `vivek` | Vivek Nair | Additional user data |
-| `meera` | Meera Kapoor | Additional user data |
+| Username | Customer     | Suggested demo use                    |
+| -------- | ------------ | ------------------------------------- |
+| `priya`  | Priya Verma  | Best primary dashboard demo user      |
+| `aarav`  | Aarav Sharma | Transfer target and second login demo |
+| `rohan`  | Rohan Mehta  | Additional user data                  |
+| `sneha`  | Sneha Iyer   | Additional user data                  |
+| `karan`  | Karan Patel  | Additional user data                  |
+| `ananya` | Ananya Rao   | Additional user data                  |
+| `vivek`  | Vivek Nair   | Additional user data                  |
+| `meera`  | Meera Kapoor | Additional user data                  |
 
 ## Seed Data Summary
 
 The SQLite seed data includes:
 
-| Data set | Rows |
-| --- | ---: |
-| Branches | 8 |
-| Customers | 10 |
-| Login users | 8 |
-| Accounts | 16 |
-| Employees | 12 |
-| Loans | 10 |
-| Transactions | 20 |
-| Loan payments | 14 |
+| Data set      | Rows |
+| ------------- | ---: |
+| Branches      |    8 |
+| Customers     |   10 |
+| Login users   |    8 |
+| Accounts      |   16 |
+| Employees     |   12 |
+| Loans         |   10 |
+| Transactions  |   20 |
+| Loan payments |   14 |
 
 ## Application Routes
 
-| Method | Route | Auth required | Purpose |
-| --- | --- | --- | --- |
-| `GET` | `/` | Yes | Dashboard page with summary, forms, tables, branches, and loans |
-| `GET` | `/auth/login` | No | Login page |
-| `POST` | `/auth/login` | No, CSRF required | Validate credentials and start session |
-| `GET` | `/auth/register` | No | Registration page |
-| `POST` | `/auth/register` | No, CSRF required | Create customer and login user |
-| `POST` | `/auth/logout` | Yes, CSRF checked if present | Clear session |
-| `POST` | `/accounts/create` | Yes, CSRF required | Create account for logged-in customer |
-| `POST` | `/transactions/create` | Yes, CSRF required | Create deposit, withdraw, or transfer |
-| `GET` | `/api/summary` | Yes | JSON summary metrics |
-| `GET` | `/api/accounts` | Yes | JSON accounts for logged-in customer |
-| `GET` | `/api/transactions` | Yes | JSON recent transactions for logged-in customer |
+| Method         | Route                        | Auth required                | Purpose                                                                         |
+| -------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------- |
+| `GET`          | `/`                          | Yes                          | Personal details page with profile, account actions, accounts, and transactions |
+| `GET`          | `/bank-details`              | Yes                          | Bank details page with summary metrics, branches, loans, and employees          |
+| `GET`          | `/auth/login`                | No                           | Login page                                                                      |
+| `POST`         | `/auth/login`                | No, CSRF required            | Validate credentials and start session                                          |
+| `GET`          | `/auth/register`             | No                           | Registration page                                                               |
+| `POST`         | `/auth/register`             | No, CSRF required            | Create customer and login user                                                  |
+| `POST`         | `/auth/logout`               | Yes, CSRF checked if present | Clear session                                                                   |
+| `POST`         | `/accounts/create`           | Yes, CSRF required           | Create account for logged-in customer                                           |
+| `POST`         | `/transactions/create`       | Yes, CSRF required           | Create deposit, withdraw, or transfer                                           |
+| `GET`          | `/api/summary`               | Yes                          | JSON summary metrics                                                            |
+| `GET`          | `/api/accounts`              | Yes                          | JSON accounts for logged-in customer                                            |
+| `PUT`, `PATCH` | `/api/accounts/<account_no>` | Yes, CSRF header required    | Update account type and/or branch for logged-in customer                        |
+| `DELETE`       | `/api/accounts/<account_no>` | Yes, CSRF header required    | Close account when balance is zero and no transaction history exists            |
+| `GET`          | `/api/transactions`          | Yes                          | JSON recent transactions for logged-in customer                                 |
 
 Unauthenticated API calls return:
 
 ```json
-{"error":"Authentication required."}
+{ "error": "Authentication required." }
 ```
 
 ## Request Flow
@@ -244,13 +250,13 @@ The database is defined in `banking_system.sql`.
 
 Stores bank branch records.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `branch_id` | `INTEGER` | Primary key, autoincrement |
-| `branch_name` | `TEXT` | Required, unique |
-| `city` | `TEXT` | Required |
-| `assets` | `NUMERIC` | Required, default `0`, must be `>= 0` |
-| `created_at` | `TEXT` | Required, default `CURRENT_TIMESTAMP` |
+| Column        | Type      | Rules                                 |
+| ------------- | --------- | ------------------------------------- |
+| `branch_id`   | `INTEGER` | Primary key, autoincrement            |
+| `branch_name` | `TEXT`    | Required, unique                      |
+| `city`        | `TEXT`    | Required                              |
+| `assets`      | `NUMERIC` | Required, default `0`, must be `>= 0` |
+| `created_at`  | `TEXT`    | Required, default `CURRENT_TIMESTAMP` |
 
 Relationships:
 
@@ -262,15 +268,15 @@ Relationships:
 
 Stores customer profile information.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `customer_id` | `INTEGER` | Primary key, autoincrement |
-| `name` | `TEXT` | Required |
-| `address` | `TEXT` | Required |
-| `phone` | `TEXT` | Required, unique |
-| `email` | `TEXT` | Required, unique |
-| `dob` | `TEXT` | Optional date string |
-| `created_at` | `TEXT` | Required, default `CURRENT_TIMESTAMP` |
+| Column        | Type      | Rules                                 |
+| ------------- | --------- | ------------------------------------- |
+| `customer_id` | `INTEGER` | Primary key, autoincrement            |
+| `name`        | `TEXT`    | Required                              |
+| `address`     | `TEXT`    | Required                              |
+| `phone`       | `TEXT`    | Required, unique                      |
+| `email`       | `TEXT`    | Required, unique                      |
+| `dob`         | `TEXT`    | Optional date string                  |
+| `created_at`  | `TEXT`    | Required, default `CURRENT_TIMESTAMP` |
 
 Relationships:
 
@@ -282,13 +288,13 @@ Relationships:
 
 Stores login credentials for customers.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `user_id` | `INTEGER` | Primary key, autoincrement |
-| `username` | `TEXT` | Required, unique |
-| `password_hash` | `TEXT` | Required, generated by Werkzeug |
-| `customer_id` | `INTEGER` | Required, unique foreign key |
-| `created_at` | `TEXT` | Required, default `CURRENT_TIMESTAMP` |
+| Column          | Type      | Rules                                 |
+| --------------- | --------- | ------------------------------------- |
+| `user_id`       | `INTEGER` | Primary key, autoincrement            |
+| `username`      | `TEXT`    | Required, unique                      |
+| `password_hash` | `TEXT`    | Required, generated by Werkzeug       |
+| `customer_id`   | `INTEGER` | Required, unique foreign key          |
+| `created_at`    | `TEXT`    | Required, default `CURRENT_TIMESTAMP` |
 
 Relationships:
 
@@ -299,14 +305,14 @@ Relationships:
 
 Stores customer bank accounts.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `account_no` | `INTEGER` | Primary key, autoincrement |
-| `acc_type` | `TEXT` | Required, must be `Savings`, `Current`, or `FD` |
-| `balance` | `NUMERIC` | Required, default `0`, must be `>= 0` |
-| `open_date` | `TEXT` | Required |
-| `branch_id` | `INTEGER` | Required foreign key |
-| `customer_id` | `INTEGER` | Required foreign key |
+| Column        | Type      | Rules                                           |
+| ------------- | --------- | ----------------------------------------------- |
+| `account_no`  | `INTEGER` | Primary key, autoincrement                      |
+| `acc_type`    | `TEXT`    | Required, must be `Savings`, `Current`, or `FD` |
+| `balance`     | `NUMERIC` | Required, default `0`, must be `>= 0`           |
+| `open_date`   | `TEXT`    | Required                                        |
+| `branch_id`   | `INTEGER` | Required foreign key                            |
+| `customer_id` | `INTEGER` | Required foreign key                            |
 
 Relationships:
 
@@ -319,14 +325,14 @@ Relationships:
 
 Stores branch employee records.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `emp_id` | `INTEGER` | Primary key, autoincrement |
-| `name` | `TEXT` | Required |
-| `designation` | `TEXT` | Required |
-| `salary` | `NUMERIC` | Required, must be `> 0` |
-| `branch_id` | `INTEGER` | Required foreign key |
-| `created_at` | `TEXT` | Required, default `CURRENT_TIMESTAMP` |
+| Column        | Type      | Rules                                 |
+| ------------- | --------- | ------------------------------------- |
+| `emp_id`      | `INTEGER` | Primary key, autoincrement            |
+| `name`        | `TEXT`    | Required                              |
+| `designation` | `TEXT`    | Required                              |
+| `salary`      | `NUMERIC` | Required, must be `> 0`               |
+| `branch_id`   | `INTEGER` | Required foreign key                  |
+| `created_at`  | `TEXT`    | Required, default `CURRENT_TIMESTAMP` |
 
 Relationships:
 
@@ -336,15 +342,15 @@ Relationships:
 
 Stores loan records issued to customers.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `loan_id` | `INTEGER` | Primary key, autoincrement |
-| `loan_type` | `TEXT` | Required, must be `Home`, `Car`, `Education`, or `Personal` |
-| `amount` | `NUMERIC` | Required, must be `> 0` |
-| `interest_rate` | `NUMERIC` | Required, must be between `0` and `100` |
-| `issue_date` | `TEXT` | Required |
-| `branch_id` | `INTEGER` | Required foreign key |
-| `customer_id` | `INTEGER` | Required foreign key |
+| Column          | Type      | Rules                                                       |
+| --------------- | --------- | ----------------------------------------------------------- |
+| `loan_id`       | `INTEGER` | Primary key, autoincrement                                  |
+| `loan_type`     | `TEXT`    | Required, must be `Home`, `Car`, `Education`, or `Personal` |
+| `amount`        | `NUMERIC` | Required, must be `> 0`                                     |
+| `interest_rate` | `NUMERIC` | Required, must be between `0` and `100`                     |
+| `issue_date`    | `TEXT`    | Required                                                    |
+| `branch_id`     | `INTEGER` | Required foreign key                                        |
+| `customer_id`   | `INTEGER` | Required foreign key                                        |
 
 Relationships:
 
@@ -356,15 +362,15 @@ Relationships:
 
 Stores deposits, withdrawals, and transfers.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `txn_id` | `INTEGER` | Primary key, autoincrement |
-| `txn_type` | `TEXT` | Required, must be `Deposit`, `Withdraw`, or `Transfer` |
-| `amount` | `NUMERIC` | Required, must be `> 0` |
-| `txn_datetime` | `TEXT` | Required |
-| `source_account_no` | `INTEGER` | Required foreign key |
-| `target_account_no` | `INTEGER` | Optional foreign key |
-| `description` | `TEXT` | Optional |
+| Column              | Type      | Rules                                                  |
+| ------------------- | --------- | ------------------------------------------------------ |
+| `txn_id`            | `INTEGER` | Primary key, autoincrement                             |
+| `txn_type`          | `TEXT`    | Required, must be `Deposit`, `Withdraw`, or `Transfer` |
+| `amount`            | `NUMERIC` | Required, must be `> 0`                                |
+| `txn_datetime`      | `TEXT`    | Required                                               |
+| `source_account_no` | `INTEGER` | Required foreign key                                   |
+| `target_account_no` | `INTEGER` | Optional foreign key                                   |
+| `description`       | `TEXT`    | Optional                                               |
 
 Relationships:
 
@@ -384,12 +390,12 @@ Business rules in service/repository code:
 
 Stores payments made against loans.
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `payment_id` | `INTEGER` | Primary key, autoincrement |
-| `loan_id` | `INTEGER` | Required foreign key |
-| `pay_date` | `TEXT` | Required |
-| `amount_paid` | `NUMERIC` | Required, must be `> 0` |
+| Column        | Type      | Rules                      |
+| ------------- | --------- | -------------------------- |
+| `payment_id`  | `INTEGER` | Primary key, autoincrement |
+| `loan_id`     | `INTEGER` | Required foreign key       |
+| `pay_date`    | `TEXT`    | Required                   |
+| `amount_paid` | `NUMERIC` | Required, must be `> 0`    |
 
 Relationships:
 
@@ -398,36 +404,36 @@ Relationships:
 
 ## Indexes
 
-| Index | Table | Columns | Purpose |
-| --- | --- | --- | --- |
-| `idx_account_customer` | `account` | `customer_id` | Fast account lookup for dashboard |
-| `idx_account_branch` | `account` | `branch_id` | Branch/account reporting |
-| `idx_employee_branch` | `employee` | `branch_id` | Branch staff lookup |
-| `idx_loan_customer` | `loan` | `customer_id` | Customer loan lookup |
-| `idx_loan_branch` | `loan` | `branch_id` | Branch loan reporting |
-| `idx_txn_source` | `bank_transaction` | `source_account_no` | Customer transaction feed |
-| `idx_txn_target` | `bank_transaction` | `target_account_no` | Transfer target lookup |
-| `idx_txn_datetime` | `bank_transaction` | `txn_datetime` | Recent transaction ordering |
-| `idx_payment_loan` | `loan_payment` | `loan_id` | Loan payment history |
+| Index                  | Table              | Columns             | Purpose                           |
+| ---------------------- | ------------------ | ------------------- | --------------------------------- |
+| `idx_account_customer` | `account`          | `customer_id`       | Fast account lookup for dashboard |
+| `idx_account_branch`   | `account`          | `branch_id`         | Branch/account reporting          |
+| `idx_employee_branch`  | `employee`         | `branch_id`         | Branch staff lookup               |
+| `idx_loan_customer`    | `loan`             | `customer_id`       | Customer loan lookup              |
+| `idx_loan_branch`      | `loan`             | `branch_id`         | Branch loan reporting             |
+| `idx_txn_source`       | `bank_transaction` | `source_account_no` | Customer transaction feed         |
+| `idx_txn_target`       | `bank_transaction` | `target_account_no` | Transfer target lookup            |
+| `idx_txn_datetime`     | `bank_transaction` | `txn_datetime`      | Recent transaction ordering       |
+| `idx_payment_loan`     | `loan_payment`     | `loan_id`           | Loan payment history              |
 
 ## Main Files
 
-| File | Responsibility |
-| --- | --- |
-| `banking_app/__init__.py` | Flask app factory, extension setup, error handlers |
-| `banking_app/config.py` | Environment-backed configuration |
-| `banking_app/db.py` | SQLite connection helper, row factory, foreign key enforcement |
-| `banking_app/auth/routes.py` | Login, registration, logout routes |
-| `banking_app/dashboard/routes.py` | Dashboard, account, transaction, API routes |
-| `banking_app/services/auth_service.py` | Auth validation, password hashing, login checks |
-| `banking_app/services/banking_service.py` | Account and transaction validation |
-| `banking_app/repositories/auth_repository.py` | Auth SQL queries |
-| `banking_app/repositories/banking_repository.py` | Banking SQL queries and transaction updates |
-| `banking_app/utils/validators.py` | Input validation and CSRF helper |
-| `banking_app/utils/decorators.py` | Login-required decorator |
-| `templates/` | Jinja pages |
-| `static/style.css` | Modern UI styling |
-| `static/app.js` | Transaction form behavior |
+| File                                             | Responsibility                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------- |
+| `banking_app/__init__.py`                        | Flask app factory, extension setup, error handlers             |
+| `banking_app/config.py`                          | Environment-backed configuration                               |
+| `banking_app/db.py`                              | SQLite connection helper, row factory, foreign key enforcement |
+| `banking_app/auth/routes.py`                     | Login, registration, logout routes                             |
+| `banking_app/dashboard/routes.py`                | Dashboard, account, transaction, API routes                    |
+| `banking_app/services/auth_service.py`           | Auth validation, password hashing, login checks                |
+| `banking_app/services/banking_service.py`        | Account and transaction validation                             |
+| `banking_app/repositories/auth_repository.py`    | Auth SQL queries                                               |
+| `banking_app/repositories/banking_repository.py` | Banking SQL queries and transaction updates                    |
+| `banking_app/utils/validators.py`                | Input validation and CSRF helper                               |
+| `banking_app/utils/decorators.py`                | Login-required decorator                                       |
+| `templates/`                                     | Jinja pages                                                    |
+| `static/style.css`                               | Modern UI styling                                              |
+| `static/app.js`                                  | Transaction form behavior                                      |
 
 ## Testing Coverage
 

@@ -35,6 +35,34 @@ class BankingService:
         )
         return account_no
 
+    def update_account(self, customer_id, account_no, payload):
+        acc_type = None
+        branch_id = None
+
+        if payload.get("acc_type") not in (None, ""):
+            acc_type = require_text(payload.get("acc_type"), "Account type", min_len=2, max_len=20)
+            if acc_type not in {"Savings", "Current", "FD"}:
+                raise ValidationError("Account type must be Savings, Current, or FD.")
+
+        if payload.get("branch_id") not in (None, ""):
+            try:
+                branch_id = int(payload.get("branch_id"))
+            except (TypeError, ValueError) as err:
+                raise ValidationError("Branch must be a valid number.") from err
+
+        if acc_type is None and branch_id is None:
+            raise ValidationError("Provide at least one field to update: acc_type or branch_id.")
+
+        return self.repository.update_account(
+            customer_id=customer_id,
+            account_no=account_no,
+            acc_type=acc_type,
+            branch_id=branch_id,
+        )
+
+    def close_account(self, customer_id, account_no):
+        return self.repository.close_account(customer_id=customer_id, account_no=account_no)
+
     def create_transaction(self, customer_id, payload):
         txn_type = require_text(payload.get("txn_type"), "Transaction type", min_len=3, max_len=20)
         if txn_type not in {"Deposit", "Withdraw", "Transfer"}:

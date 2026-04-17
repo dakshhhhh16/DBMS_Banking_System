@@ -31,11 +31,27 @@ class FakeAuthRepo:
 
 
 class FakeBankRepo:
+    def __init__(self):
+        self.update_calls = 0
+        self.close_calls = 0
+
     def create_account(self, **kwargs):
         return 10
 
     def create_transaction(self, **kwargs):
         return 20
+
+    def update_account(self, **kwargs):
+        self.update_calls += 1
+        return {
+            "account_no": kwargs["account_no"],
+            "acc_type": kwargs.get("acc_type") or "Savings",
+            "branch_id": kwargs.get("branch_id") or 1,
+        }
+
+    def close_account(self, **kwargs):
+        self.close_calls += 1
+        return kwargs["account_no"]
 
 
 def test_auth_service_rejects_duplicate_username():
@@ -82,3 +98,33 @@ def test_banking_service_rejects_transfer_without_target():
                 "target_account_no": "",
             },
         )
+
+
+def test_banking_service_rejects_update_without_fields():
+    service = BankingService(FakeBankRepo())
+
+    with pytest.raises(ValidationError):
+        service.update_account(1, 10, {})
+
+
+def test_banking_service_rejects_invalid_update_account_type():
+    service = BankingService(FakeBankRepo())
+
+    with pytest.raises(ValidationError):
+        service.update_account(
+            1,
+            10,
+            {
+                "acc_type": "Crypto",
+            },
+        )
+
+
+def test_banking_service_closes_account_via_repository():
+    repo = FakeBankRepo()
+    service = BankingService(repo)
+
+    account_no = service.close_account(1, 77)
+
+    assert account_no == 77
+    assert repo.close_calls == 1

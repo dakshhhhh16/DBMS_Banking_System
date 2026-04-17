@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Personal Details{% endblock %}
 
 {% block content %}
 {% set accounts = payload.accounts %}
 {% set transactions = payload.transactions %}
 {% set primary_account = accounts[0] if accounts else none %}
 
-<section class="dashboard-hero">
+<section class="dashboard-hero personal-hero">
   <div class="container-xl dashboard-hero-grid">
     <div class="dashboard-hero-copy">
-      <span class="eyebrow">Live banking command center</span>
-      <h1>Move money with a clear head.</h1>
-      <p>Track balances, open accounts, and complete transactions from one focused workspace.</p>
+      <span class="eyebrow">Personal banking workspace</span>
+      <h1>Your accounts, actions, and activity.</h1>
+      <p>Manage your own accounts, move money, and review recent activity without the bank-wide data getting in the way.</p>
       <div class="hero-actions">
         <a class="btn btn-hero" href="#create-transaction">Create transaction</a>
-        <a class="btn btn-hero-secondary" href="#accounts">View accounts</a>
+        <a class="btn btn-hero-secondary" href="{{ url_for('dashboard.bank_details') }}">View bank details</a>
       </div>
     </div>
 
-    <div class="hero-balance-panel" aria-label="Account snapshot">
-      <span class="panel-kicker">Signed in</span>
+    <div class="hero-balance-panel" aria-label="Personal profile snapshot">
+      <span class="panel-kicker">Personal details</span>
       <strong>{{ current_user.name }}</strong>
       <div class="hero-balance">
         {% if primary_account %}
@@ -33,49 +33,35 @@
           <small>Create an account to begin.</small>
         {% endif %}
       </div>
-      <div class="hero-pulse">
-        <span>{{ transactions|length }}</span>
-        <small>recent transactions</small>
+      <div class="profile-lines">
+        <span><b>Username</b>{{ current_user.username }}</span>
+        <span><b>Email</b>{{ current_user.email }}</span>
+        <span><b>Customer ID</b>{{ current_user.customer_id }}</span>
       </div>
     </div>
   </div>
 </section>
 
 <div class="container-xl dashboard-content">
-  <section class="metric-grid" aria-label="Bank summary">
+  <section class="personal-summary-grid" aria-label="Personal summary">
     <div class="metric-tile accent-teal">
-      <span>Branches</span>
-      <strong>{{ payload.summary.branches }}</strong>
-      <small>Active network</small>
+      <span>My accounts</span>
+      <strong>{{ accounts|length }}</strong>
+      <small>Linked to this login</small>
     </div>
     <div class="metric-tile accent-coral">
-      <span>Customers</span>
-      <strong>{{ payload.summary.customers }}</strong>
-      <small>Verified profiles</small>
+      <span>Recent activity</span>
+      <strong>{{ transactions|length }}</strong>
+      <small>Latest visible records</small>
     </div>
-    <div class="metric-tile accent-gold">
-      <span>Accounts</span>
-      <strong>{{ payload.summary.accounts }}</strong>
-      <small>Open ledgers</small>
-    </div>
-    <div class="metric-tile accent-mint">
-      <span>Loans</span>
-      <strong>{{ payload.summary.loans }}</strong>
-      <small>Issued products</small>
-    </div>
-    <div class="metric-tile accent-ink wide-metric">
-      <span>Deposits</span>
-      <strong>Rs {{ '%.2f'|format(payload.summary.total_deposit) }}</strong>
-      <small>Total held</small>
-    </div>
-    <div class="metric-tile accent-rose wide-metric">
-      <span>Loans issued</span>
-      <strong>Rs {{ '%.2f'|format(payload.summary.total_loan) }}</strong>
-      <small>Total principal</small>
+    <div class="metric-tile accent-gold wide-metric">
+      <span>Available workspace</span>
+      <strong>Accounts + transactions</strong>
+      <small>Personal records only</small>
     </div>
   </section>
 
-  <section class="operations-grid" aria-label="Banking actions">
+  <section class="operations-grid" aria-label="Personal banking actions">
     <div class="action-panel" id="create-account">
       <div class="panel-heading">
         <span class="panel-kicker">Account studio</span>
@@ -165,7 +151,7 @@
     </div>
   </section>
 
-  <section class="data-grid" id="accounts" aria-label="Account and transaction data">
+  <section class="data-grid personal-data-grid" id="accounts" aria-label="Personal account and transaction data">
     <div class="data-panel">
       <div class="panel-heading compact-heading">
         <span class="panel-kicker">Portfolio</span>
@@ -179,6 +165,7 @@
               <th>Type</th>
               <th>Branch</th>
               <th class="text-end">Balance</th>
+              <th class="actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -188,9 +175,37 @@
                 <td>{{ account.acc_type }}</td>
                 <td>{{ account.branch_name }}</td>
                 <td class="text-end amount-cell">Rs {{ '%.2f'|format(account.balance) }}</td>
+                <td class="account-actions-cell">
+                  <form class="js-account-update-form account-update-form" data-account-no="{{ account.account_no }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select class="form-select form-select-sm" name="acc_type" aria-label="Account type for {{ account.account_no }}">
+                      <option value="Savings" {% if account.acc_type == 'Savings' %}selected{% endif %}>Savings</option>
+                      <option value="Current" {% if account.acc_type == 'Current' %}selected{% endif %}>Current</option>
+                      <option value="FD" {% if account.acc_type == 'FD' %}selected{% endif %}>FD</option>
+                    </select>
+                    <select class="form-select form-select-sm" name="branch_id" aria-label="Branch for {{ account.account_no }}">
+                      {% for branch in payload.reference.branches %}
+                        <option value="{{ branch.branch_id }}" {% if branch.branch_id == account.branch_id %}selected{% endif %}>{{ branch.branch_name }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                  </form>
+
+                  {% set can_close = account.balance|float == 0 %}
+                  <form class="js-account-close-form account-close-form mt-2" data-account-no="{{ account.account_no }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button
+                      type="submit"
+                      class="btn btn-sm btn-outline-danger"
+                      {% if not can_close %}disabled title="Balance must be zero before closing."{% endif %}
+                    >
+                      Close account
+                    </button>
+                  </form>
+                </td>
               </tr>
             {% else %}
-              <tr><td colspan="4" class="text-muted">No accounts yet.</td></tr>
+              <tr><td colspan="5" class="text-muted">No accounts yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -224,50 +239,6 @@
               </tr>
             {% else %}
               <tr><td colspan="5" class="text-muted">No transactions yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section class="data-grid reference-grid" aria-label="Reference data">
-    <div class="data-panel image-panel">
-      <div class="panel-heading compact-heading">
-        <span class="panel-kicker">Network map</span>
-        <h2>Branch Directory</h2>
-      </div>
-      <div class="table-responsive">
-        <table class="table app-table align-middle mb-0">
-          <thead><tr><th>ID</th><th>Branch</th></tr></thead>
-          <tbody>
-            {% for branch in payload.reference.branches %}
-              <tr><td><span class="mono-chip">{{ branch.branch_id }}</span></td><td>{{ branch.branch_name }}</td></tr>
-            {% else %}
-              <tr><td colspan="2" class="text-muted">No branch records found.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="data-panel">
-      <div class="panel-heading compact-heading">
-        <span class="panel-kicker">Credit desk</span>
-        <h2>Recent Loans</h2>
-      </div>
-      <div class="table-responsive">
-        <table class="table app-table align-middle mb-0">
-          <thead><tr><th>Loan</th><th>Type</th><th class="text-end">Amount</th></tr></thead>
-          <tbody>
-            {% for loan in payload.reference.loans %}
-              <tr>
-                <td><span class="mono-chip">{{ loan.loan_id }}</span></td>
-                <td>{{ loan.loan_type }}</td>
-                <td class="text-end amount-cell">Rs {{ '%.2f'|format(loan.amount) }}</td>
-              </tr>
-            {% else %}
-              <tr><td colspan="3" class="text-muted">No loans found.</td></tr>
             {% endfor %}
           </tbody>
         </table>

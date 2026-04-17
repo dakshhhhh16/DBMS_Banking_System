@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Bank Details{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero bank-hero">
+  <div class="container-xl dashboard-hero-grid">
+    <div class="dashboard-hero-copy">
+      <span class="eyebrow">Bank-wide details</span>
+      <h1>The institution view, separated cleanly.</h1>
+      <p>Review branches, customers, accounts, loans, employees, and portfolio totals without mixing in personal actions.</p>
+      <div class="hero-actions">
+        <a class="btn btn-hero" href="{{ url_for('dashboard.home') }}">Personal details</a>
+        <a class="btn btn-hero-secondary" href="#branches">Branch directory</a>
+      </div>
+    </div>
+
+    <div class="hero-balance-panel" aria-label="Bank data snapshot">
+      <span class="panel-kicker">Bank snapshot</span>
+      <strong>{{ payload.summary.branches }} branches</strong>
+      <div class="hero-balance">
+        <span>Total deposits</span>
+        <b>Rs {{ '%.2f'|format(payload.summary.total_deposit) }}</b>
+        <small>{{ payload.summary.customers }} customers | {{ payload.summary.accounts }} accounts</small>
+      </div>
+      <div class="hero-pulse">
+        <span>{{ payload.summary.loans }}</span>
+        <small>active loan records</small>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container-xl dashboard-content">
+  <section class="metric-grid" aria-label="Bank summary">
+    <div class="metric-tile accent-teal">
+      <span>Branches</span>
+      <strong>{{ payload.summary.branches }}</strong>
+      <small>Active network</small>
+    </div>
+    <div class="metric-tile accent-coral">
+      <span>Customers</span>
+      <strong>{{ payload.summary.customers }}</strong>
+      <small>Verified profiles</small>
+    </div>
+    <div class="metric-tile accent-gold">
+      <span>Accounts</span>
+      <strong>{{ payload.summary.accounts }}</strong>
+      <small>Open ledgers</small>
+    </div>
+    <div class="metric-tile accent-mint">
+      <span>Loans</span>
+      <strong>{{ payload.summary.loans }}</strong>
+      <small>Issued products</small>
+    </div>
+    <div class="metric-tile accent-ink wide-metric">
+      <span>Deposits</span>
+      <strong>Rs {{ '%.2f'|format(payload.summary.total_deposit) }}</strong>
+      <small>Total held</small>
+    </div>
+    <div class="metric-tile accent-rose wide-metric">
+      <span>Loans issued</span>
+      <strong>Rs {{ '%.2f'|format(payload.summary.total_loan) }}</strong>
+      <small>Total principal</small>
+    </div>
+  </section>
+
+  <section class="data-grid reference-grid" aria-label="Bank reference data">
+    <div class="data-panel image-panel" id="branches">
+      <div class="panel-heading compact-heading">
+        <span class="panel-kicker">Network map</span>
+        <h2>Branch Directory</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table app-table align-middle mb-0">
+          <thead><tr><th>ID</th><th>Branch</th><th>City</th><th class="text-end">Assets</th></tr></thead>
+          <tbody>
+            {% for branch in payload.reference.branches %}
+              <tr>
+                <td><span class="mono-chip">{{ branch.branch_id }}</span></td>
+                <td>{{ branch.branch_name }}</td>
+                <td>{{ branch.city }}</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(branch.assets) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-muted">No branch records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="data-panel">
+      <div class="panel-heading compact-heading">
+        <span class="panel-kicker">Credit desk</span>
+        <h2>Recent Loans</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table app-table align-middle mb-0">
+          <thead><tr><th>Loan</th><th>Type</th><th>Rate</th><th class="text-end">Amount</th></tr></thead>
+          <tbody>
+            {% for loan in payload.reference.loans %}
+              <tr>
+                <td><span class="mono-chip">{{ loan.loan_id }}</span></td>
+                <td>{{ loan.loan_type }}</td>
+                <td>{{ '%.2f'|format(loan.interest_rate) }}%</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(loan.amount) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-muted">No loans found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="data-grid reference-grid" aria-label="Employee data">
+    <div class="data-panel wide-panel">
+      <div class="panel-heading compact-heading">
+        <span class="panel-kicker">Staff records</span>
+        <h2>Employees</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table app-table align-middle mb-0">
+          <thead><tr><th>ID</th><th>Name</th><th>Designation</th><th>Branch</th><th class="text-end">Salary</th></tr></thead>
+          <tbody>
+            {% for employee in payload.reference.employees %}
+              <tr>
+                <td><span class="mono-chip">{{ employee.emp_id }}</span></td>
+                <td>{{ employee.name }}</td>
+                <td>{{ employee.designation }}</td>
+                <td>{{ employee.branch_id }}</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(employee.salary) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="text-muted">No employee records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
