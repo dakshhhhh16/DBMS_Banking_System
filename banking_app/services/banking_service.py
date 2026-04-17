@@ -12,6 +12,8 @@ class BankingService:
             "reference": self.repository.get_reference_data(),
             "accounts": self.repository.get_customer_accounts(customer_id),
             "transactions": self.repository.get_recent_transactions_for_customer(customer_id),
+            "loans": self.repository.get_customer_loans(customer_id),
+            "loan_payments": self.repository.get_recent_loan_payments_for_customer(customer_id),
         }
 
     def create_account(self, customer_id, payload):
@@ -62,6 +64,54 @@ class BankingService:
 
     def close_account(self, customer_id, account_no):
         return self.repository.close_account(customer_id=customer_id, account_no=account_no)
+
+    def create_loan(self, customer_id, payload):
+        loan_type = require_text(payload.get("loan_type"), "Loan type", min_len=3, max_len=20)
+        if loan_type not in {"Home", "Car", "Education", "Personal"}:
+            raise ValidationError("Loan type must be Home, Car, Education, or Personal.")
+
+        amount = require_decimal(payload.get("amount"), "Loan amount")
+        if amount <= 0:
+            raise ValidationError("Loan amount must be greater than zero.")
+
+        interest_rate = require_decimal(payload.get("interest_rate"), "Interest rate")
+        if interest_rate < 0 or interest_rate > 100:
+            raise ValidationError("Interest rate must be between 0 and 100.")
+
+        try:
+            branch_id = int(payload.get("branch_id"))
+        except (TypeError, ValueError) as err:
+            raise ValidationError("Branch is required.") from err
+
+        return self.repository.create_loan(
+            customer_id=customer_id,
+            loan_type=loan_type,
+            amount=amount,
+            interest_rate=interest_rate,
+            branch_id=branch_id,
+        )
+
+    def create_loan_installment(self, customer_id, payload):
+        try:
+            loan_id = int(payload.get("loan_id"))
+        except (TypeError, ValueError) as err:
+            raise ValidationError("Loan is required.") from err
+
+        try:
+            source_account_no = int(payload.get("source_account_no"))
+        except (TypeError, ValueError) as err:
+            raise ValidationError("Source account is required.") from err
+
+        amount = require_decimal(payload.get("amount"), "Installment amount")
+        if amount <= 0:
+            raise ValidationError("Installment amount must be greater than zero.")
+
+        return self.repository.create_loan_installment(
+            customer_id=customer_id,
+            loan_id=loan_id,
+            source_account_no=source_account_no,
+            amount=amount,
+        )
 
     def create_transaction(self, customer_id, payload):
         txn_type = require_text(payload.get("txn_type"), "Transaction type", min_len=3, max_len=20)

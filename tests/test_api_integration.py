@@ -148,6 +148,8 @@ def test_seeded_demo_user_can_read_all_api_endpoints(tmp_path):
     summary = client.get("/api/summary")
     accounts = client.get("/api/accounts")
     transactions = client.get("/api/transactions")
+    loans = client.get("/api/loans")
+    loan_payments = client.get("/api/loan-payments")
 
     assert summary.status_code == 200
     assert summary.json["branches"] == 8
@@ -162,6 +164,14 @@ def test_seeded_demo_user_can_read_all_api_endpoints(tmp_path):
     assert transactions.status_code == 200
     assert {row["txn_type"] for row in transactions.json} >= {"Deposit", "Withdraw"}
     assert {row["source_account_no"] for row in transactions.json} == {1, 6}
+
+    assert loans.status_code == 200
+    assert len(loans.json) >= 1
+    assert "outstanding_amount" in loans.json[0]
+
+    assert loan_payments.status_code == 200
+    assert len(loan_payments.json) >= 1
+    assert "amount_paid" in loan_payments.json[0]
 
 
 def test_bank_details_page_uses_separate_bank_view(tmp_path):
@@ -305,3 +315,54 @@ def test_api_close_account_rejects_non_zero_balance(tmp_path):
 
     assert response.status_code == 400
     assert "balance must be zero" in response.json["error"].lower()
+
+
+def test_loan_installment_deduction_updates_balance_and_outstanding(tmp_path):
+    app = build_sqlite_app(tmp_path)
+    client = app.test_client()
+    login_as_priya(client)
+
+    apply_response = client.post(
+        "/loans/apply",
+        data={
+            "csrf_token": csrf_token(client, "/"),
+            "loan_type": "Personal",
+            "amount": "12000",
+            "interest_rate": "10",
+            "branch_id": "1",
+        },
+    )
+    assert apply_response.status_code == 302
+
+    loans = client.get("/api/loans").json
+    new_loan = max(loans, key=lambda row: row["loan_id"])
+
+    before_accounts = client.get("/api/accounts").json
+    account_one_before = next(row for row in before_accounts if row["account_no"] == 1)
+
+    installment_response = client.post(
+        "/loans/installments/pay",
+        data={
+            "csrf_token": csrf_token(client, "/"),
+            "loan_id": str(new_loan["loan_id"]),
+            "source_account_no": "1",
+            "amount": "2000",
+        },
+    )
+    assert installment_response.status_code == 302
+
+    after_accounts = client.get("/api/accounts").json
+    account_one_after = next(row for row in after_accounts if row["account_no"] == 1)
+    assert Decimal(account_one_after["balance"]) == Decimal(account_one_before["balance"]) - Decimal("2000")
+
+    loans_after = client.get("/api/loans").json
+    updated_loan = next(row for row in loans_after if row["loan_id"] == new_loan["loan_id"])
+    assert Decimal(updated_loan["total_paid"]) == Decimal("2000")
+    assert Decimal(updated_loan["outstanding_amount"]) == Decimal("10000")
+    assert updated_loan["installments_paid"] == 1
+
+    payments = client.get("/api/loan-payments").json
+    assert any(
+        row["loan_id"] == new_loan["loan_id"] and Decimal(row["amount_paid"]) == Decimal("2000")
+        for row in payments
+    )

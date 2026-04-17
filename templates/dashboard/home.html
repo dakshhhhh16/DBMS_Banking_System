@@ -5,6 +5,8 @@
 {% block content %}
 {% set accounts = payload.accounts %}
 {% set transactions = payload.transactions %}
+{% set loans = payload.loans %}
+{% set loan_payments = payload.loan_payments %}
 {% set primary_account = accounts[0] if accounts else none %}
 
 <section class="dashboard-hero personal-hero">
@@ -15,6 +17,8 @@
       <p>Manage your own accounts, move money, and review recent activity without the bank-wide data getting in the way.</p>
       <div class="hero-actions">
         <a class="btn btn-hero" href="#create-transaction">Create transaction</a>
+        <a class="btn btn-hero-secondary" href="#apply-loan">Apply loan</a>
+        <a class="btn btn-hero-secondary" href="#pay-installment">Pay EMI</a>
         <a class="btn btn-hero-secondary" href="{{ url_for('dashboard.bank_details') }}">View bank details</a>
       </div>
     </div>
@@ -54,7 +58,12 @@
       <strong>{{ transactions|length }}</strong>
       <small>Latest visible records</small>
     </div>
-    <div class="metric-tile accent-gold wide-metric">
+    <div class="metric-tile accent-mint">
+      <span>My loans</span>
+      <strong>{{ loans|length }}</strong>
+      <small>Applications linked to profile</small>
+    </div>
+    <div class="metric-tile accent-gold">
       <span>Available workspace</span>
       <strong>Accounts + transactions</strong>
       <small>Personal records only</small>
@@ -149,6 +158,101 @@
         </div>
       </form>
     </div>
+
+    <div class="action-panel loan-panel wide-panel" id="apply-loan">
+      <div class="panel-heading">
+        <span class="panel-kicker">Credit request</span>
+        <h2>Apply Loan</h2>
+        <p>Submit a personal loan request with amount, branch, and preferred interest rate.</p>
+      </div>
+
+      <form method="post" action="{{ url_for('dashboard.apply_loan') }}" class="row g-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="col-md-4">
+          <label class="form-label">Loan type</label>
+          <select class="form-select" name="loan_type" required>
+            <option value="Home">Home</option>
+            <option value="Car">Car</option>
+            <option value="Education">Education</option>
+            <option value="Personal">Personal</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Loan amount</label>
+          <input class="form-control" name="amount" type="number" min="0.01" step="0.01" required>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Interest rate (%)</label>
+          <input class="form-control" name="interest_rate" type="number" min="0" max="100" step="0.01" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Branch</label>
+          <select class="form-select" name="branch_id" required>
+            {% for branch in payload.reference.branches %}
+              <option value="{{ branch.branch_id }}">{{ branch.branch_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-6 d-flex align-items-end">
+          <button class="btn btn-action w-100" type="submit">Apply loan</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="action-panel emi-panel wide-panel" id="pay-installment">
+      <div class="panel-heading">
+        <span class="panel-kicker">Installment desk</span>
+        <h2>Pay EMI / Installment</h2>
+        <p>Deduct installment amount from one of your accounts and reduce outstanding loan amount.</p>
+      </div>
+
+      {% set can_pay_installment = (loans|length > 0) and (accounts|length > 0) %}
+      <form method="post" action="{{ url_for('dashboard.pay_loan_installment') }}" class="row g-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="col-md-4">
+          <label class="form-label">Loan</label>
+          <select class="form-select" name="loan_id" required {% if not can_pay_installment %}disabled{% endif %}>
+            {% for loan in loans %}
+              {% set outstanding_amount = loan.outstanding_amount if loan.outstanding_amount is defined else loan.amount %}
+              <option value="{{ loan.loan_id }}">
+                {{ loan.loan_id }} | {{ loan.loan_type }} | Outstanding Rs {{ '%.2f'|format(outstanding_amount) }}
+              </option>
+            {% else %}
+              <option value="">No loans available</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Pay from account</label>
+          <select class="form-select" name="source_account_no" required {% if not can_pay_installment %}disabled{% endif %}>
+            {% for account in accounts %}
+              <option value="{{ account.account_no }}">{{ account.account_no }} | Balance Rs {{ '%.2f'|format(account.balance) }}</option>
+            {% else %}
+              <option value="">No accounts available</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Installment amount</label>
+          <input class="form-control" name="amount" type="number" min="0.01" step="0.01" required {% if not can_pay_installment %}disabled{% endif %}>
+        </div>
+
+        <div class="col-12">
+          <button class="btn btn-action" type="submit" {% if not can_pay_installment %}disabled{% endif %}>Deduct installment</button>
+          {% if not can_pay_installment %}
+            <p class="form-hint mb-0">Create both an account and a loan to enable installment deduction.</p>
+          {% endif %}
+        </div>
+      </form>
+    </div>
   </section>
 
   <section class="data-grid personal-data-grid" id="accounts" aria-label="Personal account and transaction data">
@@ -239,6 +343,83 @@
               </tr>
             {% else %}
               <tr><td colspan="5" class="text-muted">No transactions yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="data-panel">
+      <div class="panel-heading compact-heading">
+        <span class="panel-kicker">Credit file</span>
+        <h2>My Loans</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table app-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Loan</th>
+              <th>Type</th>
+              <th>Branch</th>
+              <th>Rate</th>
+              <th class="text-end">Installments</th>
+              <th class="text-end">Paid</th>
+              <th class="text-end">Outstanding</th>
+              <th class="text-end">Amount</th>
+              <th>Issue date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in loans %}
+              {% set total_paid = loan.total_paid if loan.total_paid is defined else 0 %}
+              {% set installments_paid = loan.installments_paid if loan.installments_paid is defined else 0 %}
+              {% set outstanding_amount = loan.outstanding_amount if loan.outstanding_amount is defined else loan.amount %}
+              <tr>
+                <td><span class="mono-chip">{{ loan.loan_id }}</span></td>
+                <td>{{ loan.loan_type }}</td>
+                <td>{{ loan.branch_name }}</td>
+                <td>{{ '%.2f'|format(loan.interest_rate) }}%</td>
+                <td class="text-end">{{ installments_paid }}</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(total_paid) }}</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(outstanding_amount) }}</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(loan.amount) }}</td>
+                <td>{{ loan.issue_date }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="9" class="text-muted">No loans yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="data-panel">
+      <div class="panel-heading compact-heading">
+        <span class="panel-kicker">Repayment log</span>
+        <h2>Installments</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table app-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Payment</th>
+              <th>Loan</th>
+              <th>Type</th>
+              <th>Pay date</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in loan_payments %}
+              <tr>
+                <td><span class="mono-chip">{{ payment.payment_id }}</span></td>
+                <td>{{ payment.loan_id }}</td>
+                <td>{{ payment.loan_type }}</td>
+                <td>{{ payment.pay_date }}</td>
+                <td class="text-end amount-cell">Rs {{ '%.2f'|format(payment.amount_paid) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="text-muted">No installments paid yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>

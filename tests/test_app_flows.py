@@ -40,6 +40,12 @@ class FakeBankingRepository:
     def get_recent_transactions_for_customer(self, customer_id):
         return [{"txn_id": 1, "txn_type": "Deposit", "amount": 200, "txn_datetime": "2026-01-01 10:00:00", "source_account_no": 11, "target_account_no": None, "description": "seed"}]
 
+    def get_customer_loans(self, customer_id):
+        return [{"loan_id": 1, "loan_type": "Home", "amount": 2500000, "interest_rate": 8.5, "issue_date": "2026-01-01", "branch_id": 1, "branch_name": "MG Road", "total_paid": 100000, "installments_paid": 2, "outstanding_amount": 2400000}]
+
+    def get_recent_loan_payments_for_customer(self, customer_id):
+        return [{"payment_id": 1, "loan_id": 1, "loan_type": "Home", "pay_date": "2026-02-01", "amount_paid": 50000}]
+
 
 class FakeBankingService:
     def __init__(self):
@@ -48,6 +54,8 @@ class FakeBankingService:
         self.txn_calls = 0
         self.update_calls = 0
         self.close_calls = 0
+        self.loan_calls = 0
+        self.loan_installment_calls = 0
 
     def get_dashboard_payload(self, customer_id):
         return {
@@ -66,6 +74,8 @@ class FakeBankingService:
             },
             "accounts": self.repository.get_customer_accounts(customer_id),
             "transactions": self.repository.get_recent_transactions_for_customer(customer_id),
+            "loans": self.repository.get_customer_loans(customer_id),
+            "loan_payments": self.repository.get_recent_loan_payments_for_customer(customer_id),
         }
 
     def create_account(self, customer_id, payload):
@@ -92,6 +102,14 @@ class FakeBankingService:
     def close_account(self, customer_id, account_no):
         self.close_calls += 1
         return account_no
+
+    def create_loan(self, customer_id, payload):
+        self.loan_calls += 1
+        return 1
+
+    def create_loan_installment(self, customer_id, payload):
+        self.loan_installment_calls += 1
+        return 1
 
 
 def build_test_app():
@@ -270,3 +288,74 @@ def test_api_account_close_success_for_authenticated_user():
 
     assert response.status_code == 200
     assert response.json["account_no"] == 11
+
+
+def test_loan_application_success_for_authenticated_user():
+    app = build_test_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+        sess["csrf_token"] = "known-token"
+
+    response = client.post(
+        "/loans/apply",
+        data={
+            "csrf_token": "known-token",
+            "loan_type": "Home",
+            "amount": "1500000",
+            "interest_rate": "8.50",
+            "branch_id": "1",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Loan application submitted successfully" in response.data
+
+
+def test_loan_installment_payment_success_for_authenticated_user():
+    app = build_test_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+        sess["csrf_token"] = "known-token"
+
+    response = client.post(
+        "/loans/installments/pay",
+        data={
+            "csrf_token": "known-token",
+            "loan_id": "1",
+            "source_account_no": "11",
+            "amount": "5000",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Loan installment deducted successfully" in response.data
+
+
+def test_api_loan_payments_requires_login():
+    app = build_test_app()
+    client = app.test_client()
+
+    response = client.get("/api/loan-payments")
+
+    assert response.status_code == 401
+    assert response.json == {"error": "Authentication required."}
+
+
+def test_api_loan_payments_success_for_authenticated_user():
+    app = build_test_app()
+    client = app.test_client()
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+
+    response = client.get("/api/loan-payments")
+
+    assert response.status_code == 200
+    assert len(response.json) == 1
+    assert response.json[0]["loan_id"] == 1

@@ -50,6 +50,30 @@ def create_transaction():
     return redirect(url_for("dashboard.home"))
 
 
+@dashboard_bp.post("/loans/apply")
+@login_required
+def apply_loan():
+    try:
+        validate_csrf_from_request()
+        current_app.extensions["banking_service"].create_loan(g.user["customer_id"], request.form)
+        flash("Loan application submitted successfully.", "success")
+    except AppError as err:
+        flash(err.message, "danger")
+    return redirect(url_for("dashboard.home"))
+
+
+@dashboard_bp.post("/loans/installments/pay")
+@login_required
+def pay_loan_installment():
+    try:
+        validate_csrf_from_request()
+        current_app.extensions["banking_service"].create_loan_installment(g.user["customer_id"], request.form)
+        flash("Loan installment deducted successfully.", "success")
+    except AppError as err:
+        flash(err.message, "danger")
+    return redirect(url_for("dashboard.home"))
+
+
 @dashboard_bp.route("/api/accounts/<int:account_no>", methods=["PUT", "PATCH"])
 @login_required
 def api_update_account(account_no):
@@ -93,6 +117,22 @@ def api_accounts():
 @login_required
 def api_transactions():
     rows = current_app.extensions["banking_service"].repository.get_recent_transactions_for_customer(
+        g.user["customer_id"]
+    )
+    return jsonify(rows)
+
+
+@dashboard_bp.get("/api/loans")
+@login_required
+def api_loans():
+    rows = current_app.extensions["banking_service"].repository.get_customer_loans(g.user["customer_id"])
+    return jsonify(rows)
+
+
+@dashboard_bp.get("/api/loan-payments")
+@login_required
+def api_loan_payments():
+    rows = current_app.extensions["banking_service"].repository.get_recent_loan_payments_for_customer(
         g.user["customer_id"]
     )
     return jsonify(rows)

@@ -92,6 +92,45 @@ class BankingRepository:
             cur.close()
             return _rows_to_dicts(rows)
 
+    def get_customer_loans(self, customer_id, limit=50):
+        sql = """
+            SELECT l.loan_id, l.loan_type, l.amount, l.interest_rate, l.issue_date,
+                   l.branch_id, b.branch_name,
+                   COALESCE(SUM(lp.amount_paid), 0) AS total_paid,
+                   COUNT(lp.payment_id) AS installments_paid,
+                   (l.amount - COALESCE(SUM(lp.amount_paid), 0)) AS outstanding_amount
+            FROM loan l
+            JOIN branch b ON b.branch_id = l.branch_id
+            LEFT JOIN loan_payment lp ON lp.loan_id = l.loan_id
+            WHERE l.customer_id = ?
+            GROUP BY l.loan_id, l.loan_type, l.amount, l.interest_rate, l.issue_date, l.branch_id, b.branch_name
+            ORDER BY l.issue_date DESC, l.loan_id DESC
+            LIMIT ?
+        """
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(sql, (customer_id, limit))
+            rows = cur.fetchall()
+            cur.close()
+            return _rows_to_dicts(rows)
+
+    def get_recent_loan_payments_for_customer(self, customer_id, limit=50):
+        sql = """
+            SELECT lp.payment_id, lp.loan_id, lp.pay_date, lp.amount_paid,
+                   l.loan_type
+            FROM loan_payment lp
+            JOIN loan l ON l.loan_id = lp.loan_id
+            WHERE l.customer_id = ?
+            ORDER BY lp.pay_date DESC, lp.payment_id DESC
+            LIMIT ?
+        """
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(sql, (customer_id, limit))
+            rows = cur.fetchall()
+            cur.close()
+            return _rows_to_dicts(rows)
+
     def create_account(self, *, customer_id, branch_id, acc_type, opening_balance):
         sql = """
             INSERT INTO account (acc_type, balance, open_date, branch_id, customer_id)
@@ -119,6 +158,107 @@ class BankingRepository:
 
                 conn.commit()
                 return account_no
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cur.close()
+
+    def create_loan(self, *, customer_id, loan_type, amount, interest_rate, branch_id):
+        sql = """
+            INSERT INTO loan (loan_type, amount, interest_rate, issue_date, branch_id, customer_id)
+            VALUES (?, ?, ?, CURRENT_DATE, ?, ?)
+        """
+        with get_connection() as conn:
+            cur = conn.cursor()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                cur.execute("SELECT branch_id FROM branch WHERE branch_id = ?", (branch_id,))
+                if cur.fetchone() is None:
+                    raise NotFoundError("Selected branch was not found.")
+
+                cur.execute(sql, (loan_type, amount, interest_rate, branch_id, customer_id))
+                loan_id = cur.lastrowid
+                conn.commit()
+                return loan_id
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cur.close()
+
+    def create_loan_installment(self, *, customer_id, loan_id, source_account_no, amount):
+        with get_connection() as conn:
+            cur = conn.cursor()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+
+                cur.execute(
+                    "SELECT loan_id, customer_id, amount FROM loan WHERE loan_id = ?",
+                    (loan_id,),
+                )
+                loan = cur.fetchone()
+                if loan is None:
+                    raise NotFoundError("Loan not found.")
+                if loan["customer_id"] != customer_id:
+                    raise AuthorizationError("You can only pay your own loans.")
+
+                cur.execute(
+                    "SELECT COALESCE(SUM(amount_paid), 0) AS total_paid FROM loan_payment WHERE loan_id = ?",
+                    (loan_id,),
+                )
+                total_paid = _to_decimal(cur.fetchone()["total_paid"])
+                outstanding = _to_decimal(loan["amount"]) - total_paid
+
+                if outstanding <= Decimal("0"):
+                    raise ValidationError("Loan is already fully paid.")
+                if amount > outstanding:
+                    raise ValidationError("Installment amount cannot exceed outstanding loan amount.")
+
+                cur.execute(
+                    """
+                    SELECT account_no, balance
+                    FROM account
+                    WHERE account_no = ? AND customer_id = ?
+                    """,
+                    (source_account_no, customer_id),
+                )
+                source = cur.fetchone()
+                if source is None:
+                    raise AuthorizationError("You can only pay from your own accounts.")
+                if _to_decimal(source["balance"]) < amount:
+                    raise ValidationError("Insufficient balance to pay installment.")
+
+                cur.execute(
+                    "UPDATE account SET balance = balance - ? WHERE account_no = ?",
+                    (amount, source_account_no),
+                )
+
+                cur.execute(
+                    """
+                    INSERT INTO loan_payment (loan_id, pay_date, amount_paid)
+                    VALUES (?, CURRENT_DATE, ?)
+                    """,
+                    (loan_id, amount),
+                )
+                payment_id = cur.lastrowid
+
+                cur.execute(
+                    """
+                    INSERT INTO bank_transaction (txn_type, amount, txn_datetime, source_account_no, target_account_no, description)
+                    VALUES ('Withdraw', ?, CURRENT_TIMESTAMP, ?, NULL, ?)
+                    """,
+                    (amount, source_account_no, f"Loan EMI payment for loan #{loan_id}"),
+                )
+
+                remaining_outstanding = outstanding - amount
+                conn.commit()
+                return {
+                    "payment_id": payment_id,
+                    "loan_id": loan_id,
+                    "amount_paid": amount,
+                    "remaining_outstanding": remaining_outstanding,
+                }
             except Exception:
                 conn.rollback()
                 raise

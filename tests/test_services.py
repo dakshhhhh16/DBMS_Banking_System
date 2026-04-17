@@ -34,6 +34,8 @@ class FakeBankRepo:
     def __init__(self):
         self.update_calls = 0
         self.close_calls = 0
+        self.loan_calls = 0
+        self.installment_calls = 0
 
     def create_account(self, **kwargs):
         return 10
@@ -52,6 +54,20 @@ class FakeBankRepo:
     def close_account(self, **kwargs):
         self.close_calls += 1
         return kwargs["account_no"]
+
+    def create_loan(self, **kwargs):
+        self.loan_calls += 1
+        return 55
+
+    def get_customer_loans(self, customer_id):
+        return []
+
+    def get_recent_loan_payments_for_customer(self, customer_id):
+        return []
+
+    def create_loan_installment(self, **kwargs):
+        self.installment_calls += 1
+        return 77
 
 
 def test_auth_service_rejects_duplicate_username():
@@ -128,3 +144,96 @@ def test_banking_service_closes_account_via_repository():
 
     assert account_no == 77
     assert repo.close_calls == 1
+
+
+def test_banking_service_rejects_invalid_loan_type():
+    service = BankingService(FakeBankRepo())
+
+    with pytest.raises(ValidationError):
+        service.create_loan(
+            1,
+            {
+                "loan_type": "Crypto",
+                "amount": "100000",
+                "interest_rate": "8.5",
+                "branch_id": "1",
+            },
+        )
+
+
+def test_banking_service_rejects_loan_interest_rate_out_of_range():
+    service = BankingService(FakeBankRepo())
+
+    with pytest.raises(ValidationError):
+        service.create_loan(
+            1,
+            {
+                "loan_type": "Home",
+                "amount": "100000",
+                "interest_rate": "101",
+                "branch_id": "1",
+            },
+        )
+
+
+def test_banking_service_creates_loan_via_repository():
+    repo = FakeBankRepo()
+    service = BankingService(repo)
+
+    loan_id = service.create_loan(
+        1,
+        {
+            "loan_type": "Home",
+            "amount": "100000",
+            "interest_rate": "8.5",
+            "branch_id": "1",
+        },
+    )
+
+    assert loan_id == 55
+    assert repo.loan_calls == 1
+
+
+def test_banking_service_rejects_installment_without_loan_id():
+    service = BankingService(FakeBankRepo())
+
+    with pytest.raises(ValidationError):
+        service.create_loan_installment(
+            1,
+            {
+                "loan_id": "",
+                "source_account_no": "1",
+                "amount": "1000",
+            },
+        )
+
+
+def test_banking_service_rejects_installment_without_source_account():
+    service = BankingService(FakeBankRepo())
+
+    with pytest.raises(ValidationError):
+        service.create_loan_installment(
+            1,
+            {
+                "loan_id": "1",
+                "source_account_no": "",
+                "amount": "1000",
+            },
+        )
+
+
+def test_banking_service_creates_installment_via_repository():
+    repo = FakeBankRepo()
+    service = BankingService(repo)
+
+    payment_id = service.create_loan_installment(
+        1,
+        {
+            "loan_id": "1",
+            "source_account_no": "1",
+            "amount": "1000",
+        },
+    )
+
+    assert payment_id == 77
+    assert repo.installment_calls == 1
