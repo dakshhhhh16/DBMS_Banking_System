@@ -1,17 +1,206 @@
-# SQL Queries Added and Updated
+# All SQL Queries Used in the App
 
-This document lists the SQL statements added or updated for:
+This file now contains all SQL statements currently used by the Python data-access layer:
 
-- account update and account close
-- loan application
-- EMI/installment deduction
-- loan and installment reporting
+- auth repository queries
+- banking repository queries
+- DB connection PRAGMA statements
 
-All placeholders use SQLite parameter binding with `?` to prevent SQL injection for values.
+It excludes DDL/schema creation statements from `banking_system.sql` because those are already documented in that file.
 
-## 1) Customer Accounts Query (updated)
+## Notes
 
-**Location:** `banking_app/repositories/banking_repository.py` in `get_customer_accounts`
+- Value placeholders use `?` parameter binding (SQLite safe parameterization).
+- Multi-step write operations use transactions with `BEGIN IMMEDIATE`.
+- One query is intentionally dynamic: account update query in `update_account`, but the dynamic fields are restricted in Python to known safe column names.
+
+---
+
+## 1) Auth Repository Queries
+
+### 1.1 Get user by username
+
+Location: `AuthRepository.get_user_by_username`
+
+```sql
+SELECT u.user_id, u.username, u.password_hash, u.customer_id, c.name, c.email
+FROM app_user u
+JOIN customer c ON c.customer_id = u.customer_id
+WHERE u.username = ?
+LIMIT 1
+```
+
+Purpose:
+
+- Fetch login record + customer profile details by username.
+
+---
+
+### 1.2 Get user by ID
+
+Location: `AuthRepository.get_user_by_id`
+
+```sql
+SELECT u.user_id, u.username, u.customer_id, c.name, c.email
+FROM app_user u
+JOIN customer c ON c.customer_id = u.customer_id
+WHERE u.user_id = ?
+LIMIT 1
+```
+
+Purpose:
+
+- Load user session identity and profile.
+
+---
+
+### 1.3 Username existence check
+
+Location: `AuthRepository.username_exists`
+
+```sql
+SELECT 1 FROM app_user WHERE username = ? LIMIT 1
+```
+
+Purpose:
+
+- Validate unique username during registration.
+
+---
+
+### 1.4 Email existence check
+
+Location: `AuthRepository.email_exists`
+
+```sql
+SELECT 1 FROM customer WHERE email = ? LIMIT 1
+```
+
+Purpose:
+
+- Validate unique email during registration.
+
+---
+
+### 1.5 Phone existence check
+
+Location: `AuthRepository.phone_exists`
+
+```sql
+SELECT 1 FROM customer WHERE phone = ? LIMIT 1
+```
+
+Purpose:
+
+- Validate unique phone during registration.
+
+---
+
+### 1.6 Registration transaction statements
+
+Location: `AuthRepository.create_user_with_customer`
+
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start a write transaction with early lock.
+
+```sql
+INSERT INTO customer (name, address, phone, email, dob)
+VALUES (?, ?, ?, ?, ?)
+```
+
+Purpose:
+
+- Create customer row first.
+
+```sql
+INSERT INTO app_user (username, password_hash, customer_id)
+VALUES (?, ?, ?)
+```
+
+Purpose:
+
+- Create login user linked to the new customer.
+
+---
+
+## 2) Banking Repository Read Queries
+
+### 2.1 Dashboard summary metrics
+
+Location: `BankingRepository.get_summary`
+
+```sql
+SELECT
+    (SELECT COUNT(*) FROM branch) AS branches,
+    (SELECT COUNT(*) FROM customer) AS customers,
+    (SELECT COUNT(*) FROM account) AS accounts,
+    (SELECT COUNT(*) FROM loan) AS loans,
+    (SELECT COALESCE(SUM(balance), 0) FROM account) AS total_deposit,
+    (SELECT COALESCE(SUM(amount), 0) FROM loan) AS total_loan
+```
+
+Purpose:
+
+- Aggregate top-level dashboard metrics.
+
+---
+
+### 2.2 Reference branches
+
+Location: `BankingRepository.get_reference_data`
+
+```sql
+SELECT branch_id, branch_name, city, assets FROM branch ORDER BY branch_name
+```
+
+Purpose:
+
+- Populate branch dropdowns and bank reference tables.
+
+---
+
+### 2.3 Reference loans
+
+Location: `BankingRepository.get_reference_data`
+
+```sql
+SELECT loan_id, loan_type, amount, interest_rate, issue_date, customer_id, branch_id
+FROM loan
+ORDER BY issue_date DESC
+LIMIT 25
+```
+
+Purpose:
+
+- Show latest loan reference records on bank details page.
+
+---
+
+### 2.4 Reference employees
+
+Location: `BankingRepository.get_reference_data`
+
+```sql
+SELECT emp_id, name, designation, salary, branch_id
+FROM employee
+ORDER BY emp_id DESC
+LIMIT 50
+```
+
+Purpose:
+
+- Show employee reference data.
+
+---
+
+### 2.5 Customer accounts
+
+Location: `BankingRepository.get_customer_accounts`
 
 ```sql
 SELECT a.account_no, a.acc_type, a.balance, a.open_date, a.branch_id,
@@ -22,20 +211,35 @@ WHERE a.customer_id = ?
 ORDER BY a.account_no
 ```
 
-**Why:**
+Purpose:
 
-- Fetches only the logged-in customer's accounts.
-- Includes `branch_id` (newly included) so account update forms can preselect the current branch.
-
-**Parameter:**
-
-- `customer_id`
+- Return accounts owned by logged-in customer.
 
 ---
 
-## 2) Customer Loans Query With Repayment Summary
+### 2.6 Recent customer transactions
 
-**Location:** `banking_app/repositories/banking_repository.py` in `get_customer_loans`
+Location: `BankingRepository.get_recent_transactions_for_customer`
+
+```sql
+SELECT t.txn_id, t.txn_type, t.amount, t.txn_datetime,
+       t.source_account_no, t.target_account_no, t.description
+FROM bank_transaction t
+JOIN account a ON a.account_no = t.source_account_no
+WHERE a.customer_id = ?
+ORDER BY t.txn_datetime DESC
+LIMIT ?
+```
+
+Purpose:
+
+- Return latest transaction stream for customer-owned source accounts.
+
+---
+
+### 2.7 Customer loans with repayment summary
+
+Location: `BankingRepository.get_customer_loans`
 
 ```sql
 SELECT l.loan_id, l.loan_type, l.amount, l.interest_rate, l.issue_date,
@@ -52,24 +256,15 @@ ORDER BY l.issue_date DESC, l.loan_id DESC
 LIMIT ?
 ```
 
-**Why:**
+Purpose:
 
-- Returns each loan for the current customer.
-- Calculates repayment progress:
-  - `total_paid`
-  - `installments_paid`
-  - `outstanding_amount`
-
-**Parameters:**
-
-- `customer_id`
-- `limit`
+- Return customer loans + paid amount + number of installments + outstanding amount.
 
 ---
 
-## 3) Recent Installment Payments Query
+### 2.8 Recent loan payments (installments)
 
-**Location:** `banking_app/repositories/banking_repository.py` in `get_recent_loan_payments_for_customer`
+Location: `BankingRepository.get_recent_loan_payments_for_customer`
 
 ```sql
 SELECT lp.payment_id, lp.loan_id, lp.pay_date, lp.amount_paid,
@@ -81,91 +276,112 @@ ORDER BY lp.pay_date DESC, lp.payment_id DESC
 LIMIT ?
 ```
 
-**Why:**
+Purpose:
 
-- Shows installment history for the logged-in customer only.
-
-**Parameters:**
-
-- `customer_id`
-- `limit`
+- Return installment history for logged-in customer.
 
 ---
 
-## 4) Loan Application Queries
+## 3) Banking Repository Write Queries
 
-### 4.1 Branch existence check
+### 3.1 Create account flow
 
-**Location:** `create_loan`
+Location: `BankingRepository.create_account`
+
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start write transaction.
 
 ```sql
 SELECT branch_id FROM branch WHERE branch_id = ?
 ```
 
-**Why:**
+Purpose:
 
-- Validates the selected branch before loan insertion.
+- Validate selected branch exists.
 
-**Parameter:**
+```sql
+INSERT INTO account (acc_type, balance, open_date, branch_id, customer_id)
+VALUES (?, ?, CURRENT_DATE, ?, ?)
+```
 
-- `branch_id`
+Purpose:
 
-### 4.2 Insert loan
+- Create new account for customer.
 
-**Location:** `create_loan`
+```sql
+INSERT INTO bank_transaction (txn_type, amount, txn_datetime, source_account_no, target_account_no, description)
+VALUES ('Deposit', ?, CURRENT_TIMESTAMP, ?, NULL, 'Initial deposit')
+```
+
+Purpose:
+
+- Add ledger entry if opening balance is greater than zero.
+
+---
+
+### 3.2 Create loan flow
+
+Location: `BankingRepository.create_loan`
+
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start write transaction.
+
+```sql
+SELECT branch_id FROM branch WHERE branch_id = ?
+```
+
+Purpose:
+
+- Validate selected branch exists.
 
 ```sql
 INSERT INTO loan (loan_type, amount, interest_rate, issue_date, branch_id, customer_id)
 VALUES (?, ?, ?, CURRENT_DATE, ?, ?)
 ```
 
-**Why:**
+Purpose:
 
-- Creates a new loan record for the customer.
-
-**Parameters:**
-
-- `loan_type`, `amount`, `interest_rate`, `branch_id`, `customer_id`
+- Create new loan record for customer.
 
 ---
 
-## 5) Loan EMI / Installment Deduction Queries
+### 3.3 Pay loan installment (EMI deduction) flow
 
-### 5.1 Load loan and ownership check
+Location: `BankingRepository.create_loan_installment`
 
-**Location:** `create_loan_installment`
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start atomic write transaction.
 
 ```sql
 SELECT loan_id, customer_id, amount FROM loan WHERE loan_id = ?
 ```
 
-**Why:**
+Purpose:
 
-- Ensures the loan exists and belongs to the current customer.
-
-**Parameter:**
-
-- `loan_id`
-
-### 5.2 Total paid so far
-
-**Location:** `create_loan_installment`
+- Validate loan exists and load principal amount.
 
 ```sql
 SELECT COALESCE(SUM(amount_paid), 0) AS total_paid FROM loan_payment WHERE loan_id = ?
 ```
 
-**Why:**
+Purpose:
 
-- Calculates current repayment total to derive outstanding amount before accepting payment.
-
-**Parameter:**
-
-- `loan_id`
-
-### 5.3 Load source account and balance
-
-**Location:** `create_loan_installment`
+- Compute already paid amount to validate installment size.
 
 ```sql
 SELECT account_no, balance
@@ -173,120 +389,134 @@ FROM account
 WHERE account_no = ? AND customer_id = ?
 ```
 
-**Why:**
+Purpose:
 
-- Confirms the account belongs to the customer and has sufficient funds.
-
-**Parameters:**
-
-- `source_account_no`, `customer_id`
-
-### 5.4 Deduct installment from account
-
-**Location:** `create_loan_installment`
+- Validate source account ownership and available balance.
 
 ```sql
 UPDATE account SET balance = balance - ? WHERE account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Deducts EMI/installment from selected account.
-
-**Parameters:**
-
-- `amount`, `source_account_no`
-
-### 5.5 Insert installment record
-
-**Location:** `create_loan_installment`
+- Deduct installment from source account.
 
 ```sql
 INSERT INTO loan_payment (loan_id, pay_date, amount_paid)
 VALUES (?, CURRENT_DATE, ?)
 ```
 
-**Why:**
+Purpose:
 
-- Persists installment payment against the loan.
-
-**Parameters:**
-
-- `loan_id`, `amount`
-
-### 5.6 Insert matching transaction ledger entry
-
-**Location:** `create_loan_installment`
+- Record installment payment.
 
 ```sql
 INSERT INTO bank_transaction (txn_type, amount, txn_datetime, source_account_no, target_account_no, description)
 VALUES ('Withdraw', ?, CURRENT_TIMESTAMP, ?, NULL, ?)
 ```
 
-**Why:**
+Purpose:
 
-- Keeps account transaction history consistent with EMI deduction.
-
-**Parameters:**
-
-- `amount`, `source_account_no`, `description`
+- Write matching transaction history row for deduction.
 
 ---
 
-## 6) Account Update Queries
+### 3.4 Create transaction flow (deposit, withdraw, transfer)
 
-### 6.1 Load account and ownership check
+Location: `BankingRepository.create_transaction`
 
-**Location:** `update_account`
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start atomic write transaction.
+
+```sql
+SELECT account_no, balance
+FROM account
+WHERE account_no = ? AND customer_id = ?
+```
+
+Purpose:
+
+- Validate source account belongs to logged-in customer.
+
+```sql
+SELECT account_no, balance FROM account WHERE account_no = ?
+```
+
+Purpose:
+
+- Validate transfer target account exists.
+
+```sql
+UPDATE account SET balance = balance + ? WHERE account_no = ?
+```
+
+Purpose:
+
+- Deposit amount into source account (deposit flow), or into target account (transfer flow).
+
+```sql
+UPDATE account SET balance = balance - ? WHERE account_no = ?
+```
+
+Purpose:
+
+- Deduct amount from source account (withdraw/transfer flow).
+
+```sql
+INSERT INTO bank_transaction (txn_type, amount, txn_datetime, source_account_no, target_account_no, description)
+VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
+```
+
+Purpose:
+
+- Persist transaction ledger row.
+
+---
+
+### 3.5 Update account flow
+
+Location: `BankingRepository.update_account`
+
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start write transaction.
 
 ```sql
 SELECT account_no, customer_id FROM account WHERE account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Ensures account exists and belongs to logged-in customer.
-
-**Parameter:**
-
-- `account_no`
-
-### 6.2 Optional branch existence check
-
-**Location:** `update_account`
+- Validate account exists and belongs to logged-in customer.
 
 ```sql
 SELECT branch_id FROM branch WHERE branch_id = ?
 ```
 
-**Why:**
+Purpose:
 
-- Validates branch before updating account branch.
-
-**Parameter:**
-
-- `branch_id`
-
-### 6.3 Dynamic account update
-
-**Location:** `update_account`
+- Validate branch when branch update requested.
 
 ```sql
 UPDATE account SET <dynamic columns> WHERE account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Updates `acc_type`, `branch_id`, or both.
-- Dynamic part is limited by Python logic to known columns only.
+- Update `acc_type`, `branch_id`, or both.
 
-**Parameters:**
+Important:
 
-- Selected values (`acc_type` and/or `branch_id`), then `account_no`
-
-### 6.4 Fetch updated account for response
-
-**Location:** `update_account`
+- The dynamic column list is assembled only from a strict whitelist in Python logic (`acc_type`, `branch_id`).
 
 ```sql
 SELECT a.account_no, a.acc_type, a.balance, a.open_date, a.branch_id,
@@ -296,37 +526,31 @@ JOIN branch b ON b.branch_id = a.branch_id
 WHERE a.account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Returns fresh account data after update.
-
-**Parameter:**
-
-- `account_no`
+- Fetch and return updated row for API response.
 
 ---
 
-## 7) Account Close Queries
+### 3.6 Close account flow
 
-### 7.1 Load account for close validation
+Location: `BankingRepository.close_account`
 
-**Location:** `close_account`
+```sql
+BEGIN IMMEDIATE
+```
+
+Purpose:
+
+- Start atomic write transaction.
 
 ```sql
 SELECT account_no, customer_id, balance FROM account WHERE account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Validates account ownership and zero-balance requirement.
-
-**Parameter:**
-
-- `account_no`
-
-### 7.2 Check transaction history (close safety)
-
-**Location:** `close_account`
+- Validate account exists, ownership, and balance state.
 
 ```sql
 SELECT COUNT(*) AS txn_count
@@ -334,38 +558,50 @@ FROM bank_transaction
 WHERE source_account_no = ? OR target_account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Prevents closing an account that already has transaction history.
-
-**Parameters:**
-
-- `account_no`, `account_no`
-
-### 7.3 Delete account
-
-**Location:** `close_account`
+- Prevent closure if transaction history exists.
 
 ```sql
 DELETE FROM account WHERE account_no = ?
 ```
 
-**Why:**
+Purpose:
 
-- Closes the account after all validations pass.
-
-**Parameter:**
-
-- `account_no`
+- Delete account once all checks pass.
 
 ---
 
-## Transaction Handling Note
+## 4) DB Connection Statements (Executed on Each Connection)
 
-For write operations, the repository uses:
+Location: `banking_app/db.py` in `get_connection`
 
 ```sql
-BEGIN IMMEDIATE
+PRAGMA foreign_keys = ON
 ```
 
-This obtains a write lock early in SQLite, helping avoid race conditions during multi-step operations such as installment deduction and account close checks.
+Purpose:
+
+- Enforce foreign key constraints in SQLite.
+
+```sql
+PRAGMA busy_timeout = 5000
+```
+
+Purpose:
+
+- Wait up to 5000 ms for DB locks before failing.
+
+---
+
+## 5) Transaction Pattern Summary
+
+The repositories follow this write pattern:
+
+1. `BEGIN IMMEDIATE`
+2. Validate ownership and reference constraints
+3. Perform one or more writes
+4. `commit()` on success
+5. `rollback()` on exception
+
+This prevents partial writes and keeps account, loan, and ledger data consistent.
