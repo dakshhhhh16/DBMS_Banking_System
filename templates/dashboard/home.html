@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h4 mb-1">Dashboard</h1>
+    <p class="text-muted mb-0 small">Track your accounts and perform transactions securely.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-lg-2">
+    <div class="card stat-card border-0 shadow-sm"><div class="card-body"><p class="text-muted small mb-1">Branches</p><h3 class="h4 mb-0">{{ payload.summary.branches }}</h3></div></div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="card stat-card border-0 shadow-sm"><div class="card-body"><p class="text-muted small mb-1">Customers</p><h3 class="h4 mb-0">{{ payload.summary.customers }}</h3></div></div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="card stat-card border-0 shadow-sm"><div class="card-body"><p class="text-muted small mb-1">Accounts</p><h3 class="h4 mb-0">{{ payload.summary.accounts }}</h3></div></div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="card stat-card border-0 shadow-sm"><div class="card-body"><p class="text-muted small mb-1">Loans</p><h3 class="h4 mb-0">{{ payload.summary.loans }}</h3></div></div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="card stat-card border-0 shadow-sm"><div class="card-body"><p class="text-muted small mb-1">Deposits</p><h3 class="h6 mb-0">Rs {{ '%.2f'|format(payload.summary.total_deposit) }}</h3></div></div>
+  </div>
+  <div class="col-md-4 col-lg-2">
+    <div class="card stat-card border-0 shadow-sm"><div class="card-body"><p class="text-muted small mb-1">Loans Issued</p><h3 class="h6 mb-0">Rs {{ '%.2f'|format(payload.summary.total_loan) }}</h3></div></div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-3 pb-0">
+        <h2 class="h6">Create Account</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('dashboard.create_account') }}" class="row g-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="col-md-6">
+            <label class="form-label">Account type</label>
+            <select class="form-select" name="acc_type" required>
+              <option value="Savings">Savings</option>
+              <option value="Current">Current</option>
+              <option value="FD">FD</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Branch</label>
+            <select class="form-select" name="branch_id" required>
+              {% for branch in payload.reference.branches %}
+                <option value="{{ branch.branch_id }}">{{ branch.branch_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Opening balance</label>
+            <input class="form-control" name="opening_balance" type="number" min="0" step="0.01" value="0" required>
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">Create account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-3 pb-0">
+        <h2 class="h6">Create Transaction</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('dashboard.create_transaction') }}" class="row g-3" id="transaction-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="col-md-6">
+            <label class="form-label">Transaction type</label>
+            <select class="form-select" name="txn_type" id="txn_type" required>
+              <option value="Deposit">Deposit</option>
+              <option value="Withdraw">Withdraw</option>
+              <option value="Transfer">Transfer</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Amount</label>
+            <input class="form-control" name="amount" type="number" min="0.01" step="0.01" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Source account</label>
+            <select class="form-select" name="source_account_no" required>
+              {% for account in payload.accounts %}
+                <option value="{{ account.account_no }}">{{ account.account_no }} ({{ account.acc_type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6" id="target-account-wrap" hidden>
+            <label class="form-label">Target account</label>
+            <input class="form-control" name="target_account_no" type="number" min="1">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Description (optional)</label>
+            <input class="form-control" name="description" maxlength="255">
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">Submit transaction</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3 pb-0"><h2 class="h6">My Accounts</h2></div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Type</th>
+              <th>Branch</th>
+              <th class="text-end">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for account in payload.accounts %}
+              <tr>
+                <td>{{ account.account_no }}</td>
+                <td>{{ account.acc_type }}</td>
+                <td>{{ account.branch_name }}</td>
+                <td class="text-end">Rs {{ '%.2f'|format(account.balance) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-muted">No accounts yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3 pb-0"><h2 class="h6">Recent Transactions</h2></div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Source</th>
+              <th>Target</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for txn in payload.transactions %}
+              <tr>
+                <td>{{ txn.txn_id }}</td>
+                <td>{{ txn.txn_type }}</td>
+                <td>{{ txn.source_account_no }}</td>
+                <td>{{ txn.target_account_no or '-' }}</td>
+                <td class="text-end">Rs {{ '%.2f'|format(txn.amount) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="text-muted">No transactions yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3 pb-0"><h2 class="h6">Branch Directory</h2></div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>ID</th><th>Branch</th></tr></thead>
+          <tbody>
+            {% for branch in payload.reference.branches %}
+              <tr><td>{{ branch.branch_id }}</td><td>{{ branch.branch_name }}</td></tr>
+            {% else %}
+              <tr><td colspan="2" class="text-muted">No branch records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3 pb-0"><h2 class="h6">Recent Loans</h2></div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Loan</th><th>Type</th><th class="text-end">Amount</th></tr></thead>
+          <tbody>
+            {% for loan in payload.reference.loans %}
+              <tr>
+                <td>{{ loan.loan_id }}</td>
+                <td>{{ loan.loan_type }}</td>
+                <td class="text-end">Rs {{ '%.2f'|format(loan.amount) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="text-muted">No loans found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

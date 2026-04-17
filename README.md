@@ -1,24 +1,155 @@
-# Banking Management System - DBMS Project
+# Banking System (Flask + MySQL)
 
-A small banking database I built for my DBMS course. It models the everyday stuff a bank deals with — branches, customers, accounts, employees, loans, transactions, and loan payments — and ties it all together with proper keys, constraints and a handful of useful queries.
+This project is a modular, server-rendered banking system built with Flask, MySQL, and Jinja templates.
 
-## What's inside
+It includes:
+- Secure registration and login (password hashing + session auth)
+- Account creation
+- Deposit/withdraw/transfer transactions with validation
+- Dashboard summaries and recent activity
+- MySQL schema with constraints, foreign keys, and indexes
+- Automated tests for key user flows and edge cases
 
-- **[Banking_System_Report.md](Banking_System_Report.md)** — the full report: ER model, relational schema, normalization (everything ends up in BCNF), and the SQL with explanations.
-- **[banking_system.sql](banking_system.sql)** — the actual database. Drops & creates 7 tables, inserts sample data, and runs 10 queries (joins, aggregations, sub-queries).
+## Architecture
 
-## Run it
-
-```bash
-mysql -u root banking_db < banking_system.sql
+```text
+.
+|-- app.py
+|-- banking_app/
+|   |-- __init__.py
+|   |-- config.py
+|   |-- db.py
+|   |-- auth/
+|   |   `-- routes.py
+|   |-- dashboard/
+|   |   `-- routes.py
+|   |-- repositories/
+|   |   |-- auth_repository.py
+|   |   `-- banking_repository.py
+|   |-- services/
+|   |   |-- auth_service.py
+|   |   `-- banking_service.py
+|   `-- utils/
+|       |-- decorators.py
+|       |-- exceptions.py
+|       `-- validators.py
+|-- templates/
+|   |-- base.html
+|   |-- auth/
+|   |   |-- login.html
+|   |   `-- register.html
+|   `-- dashboard/
+|       `-- home.html
+|-- static/
+|   |-- app.js
+|   `-- style.css
+|-- banking_system.sql
+|-- tests/
+|   |-- test_app_flows.py
+|   `-- test_services.py
+|-- requirements.txt
+`-- .env.example
 ```
 
-Works on MySQL / MariaDB out of the box.
+## Prerequisites
 
-## Why this system?
+- Python 3.10+
+- MySQL 8+
 
-Banks were the first thing that came to mind where data integrity actually *matters* — you can't have a withdrawal without an account, or a loan without a customer. It made the foreign keys and constraints feel like they were doing real work, not just being added because the rubric said so.
+## Setup
 
----
-Authors:
-*Daksh Pathak · Naman Jain · Anvay April 2025*
+1. Create and activate a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Configure environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Then update `.env` with your MySQL credentials.
+
+4. Create database and load schema:
+
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS banking_db"
+mysql -u root -p banking_db < banking_system.sql
+```
+
+5. Run the app:
+
+```bash
+python app.py
+```
+
+Open: `http://localhost:5050`
+
+## Fast Setup (Recommended)
+
+Use the provided scripts to set up everything:
+
+1. Full setup (Python + optional MySQL install + DB init):
+
+```bash
+bash scripts/setup_all.sh
+```
+
+2. If MySQL is already installed and configured:
+
+```bash
+bash scripts/setup_all.sh --skip-mysql-install
+```
+
+3. DB-only reset/init:
+
+```bash
+bash scripts/setup_db.sh
+```
+
+4. Run app:
+
+```bash
+bash scripts/run_dev.sh
+```
+
+Notes:
+- `scripts/setup_all.sh` may prompt for sudo when installing MySQL on Ubuntu/Debian.
+- Database credentials are read from `.env`.
+
+## Test
+
+Run automated tests:
+
+```bash
+pytest -q
+```
+
+The tests cover:
+- Registration flow
+- Login flow
+- Account creation flow
+- Transaction flow and edge-case validation
+
+## Security Notes
+
+- Passwords are hashed using Werkzeug.
+- Session cookies are HTTP-only and SameSite=Lax.
+- CSRF checks are enforced on form POSTs.
+- Parameterized SQL queries are used via MySQL connector.
+
+## Database Design Notes
+
+- Uses explicit foreign keys with delete/update policies.
+- Uses constraints and ENUMs for domain correctness.
+- Uses indexes on account/customer/branch and transaction timestamps.
+- Uses a dedicated `bank_transaction` table (avoids reserved keyword conflicts).

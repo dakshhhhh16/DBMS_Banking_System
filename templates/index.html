@@ -1,82 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Banking Management System</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+{% extends "base.html" %}
 
-<header>
-  <div class="header-inner">
-    <div>
-      <h1>Banking Management System</h1>
-      <p class="subtitle">A live view into your bank's data — branches, customers, loans and more.</p>
-    </div>
-    <span class="badge">DBMS Project · Daksh Pathak</span>
-  </div>
-</header>
+{% block title %}Dashboard{% endblock %}
 
-<nav class="tabs">
-  <button class="tab active" data-tab="dashboard">Overview</button>
-  <button class="tab" data-tab="customers">Customers</button>
-  <button class="tab" data-tab="accounts">Accounts</button>
-  <button class="tab" data-tab="branches">Branches</button>
-  <button class="tab" data-tab="loans">Loans</button>
-  <button class="tab" data-tab="transactions">Transactions</button>
-  <button class="tab" data-tab="employees">Employees</button>
-</nav>
-
-<main>
-  <section id="dashboard" class="panel active">
-    <p class="section-hint">Numbers pulled live from MySQL right now.</p>
-    <div class="cards">
-      <div class="card">
-        <h3>Branches</h3>
-        <p id="c-branches">–</p>
-        <span class="card-desc">Active locations</span>
-      </div>
-      <div class="card">
-        <h3>Customers</h3>
-        <p id="c-customers">–</p>
-        <span class="card-desc">Registered members</span>
-      </div>
-      <div class="card">
-        <h3>Accounts</h3>
-        <p id="c-accounts">–</p>
-        <span class="card-desc">Savings, Current &amp; FD</span>
-      </div>
-      <div class="card">
-        <h3>Loans</h3>
-        <p id="c-loans">–</p>
-        <span class="card-desc">Active loan records</span>
-      </div>
-      <div class="card highlight">
-        <h3>Total Deposits</h3>
-        <p id="c-deposit">–</p>
-        <span class="card-desc">Across all accounts</span>
-      </div>
-      <div class="card highlight">
-        <h3>Total Loans Issued</h3>
-        <p id="c-loan">–</p>
-        <span class="card-desc">Principal disbursed</span>
-      </div>
-    </div>
-  </section>
-
-  <section id="customers"    class="panel"><p class="section-hint">All registered bank customers.</p><div class="table-wrap"></div></section>
-  <section id="accounts"     class="panel"><p class="section-hint">Every account linked to its owner and branch.</p><div class="table-wrap"></div></section>
-  <section id="branches"     class="panel"><p class="section-hint">Branch locations with total deposits and headcount.</p><div class="table-wrap"></div></section>
-  <section id="loans"        class="panel"><p class="section-hint">Loan records showing amount issued, paid so far, and what remains.</p><div class="table-wrap"></div></section>
-  <section id="transactions" class="panel"><p class="section-hint">Recent transactions in reverse chronological order.</p><div class="table-wrap"></div></section>
-  <section id="employees"    class="panel"><p class="section-hint">Staff across all branches.</p><div class="table-wrap"></div></section>
-</main>
-
-<footer>
-  <p>Powered by Flask &amp; MySQL &nbsp;·&nbsp; April 2025</p>
-</footer>
-
-<script src="/static/app.js"></script>
-</body>
-</html>
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="display-6 fw-bold">Welcome to the Banking System</h1>
+  <p class="text-muted">Please log in to continue.</p>
+  <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+</div>
+{% endblock %}
